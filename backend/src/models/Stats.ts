@@ -322,8 +322,9 @@ const statsSchema = new Schema<IStats>({
 
 // 中间件：保存前计算增长数据
 statsSchema.pre('save', function(next) {
-  if (this.articleStats && this.articleStats.length > 0) {
-    this.articleStats.forEach((stat: any) => {
+  const self = this as any;
+  if (self.articleStats && self.articleStats.length > 0) {
+    self.articleStats.forEach((stat: any) => {
       if (stat.previousStats) {
         stat.growth = {
           views: stat.views - (stat.previousStats.views || 0),
@@ -340,7 +341,8 @@ statsSchema.pre('save', function(next) {
 
 // 实例方法：添加文章统计
 statsSchema.methods.addArticleStats = function(articleStats: ArticleStats): void {
-  const existingIndex = this.articleStats.findIndex(
+  const self = this as any;
+  const existingIndex = self.articleStats.findIndex(
     (stat: ArticleStats) => 
       stat.articleId.toString() === articleStats.articleId.toString() && 
       stat.platform === articleStats.platform
@@ -348,17 +350,17 @@ statsSchema.methods.addArticleStats = function(articleStats: ArticleStats): void
   
   if (existingIndex >= 0) {
     // 保存之前的数据用于计算增长
-    const existing = this.articleStats[existingIndex];
-    articleStats.previousStats = {
+    const existing = self.articleStats[existingIndex];
+    (articleStats as any).previousStats = {
       views: existing.views,
       likes: existing.likes,
       comments: existing.comments,
       shares: existing.shares,
       collects: existing.collects
     };
-    this.articleStats[existingIndex] = articleStats;
+    self.articleStats[existingIndex] = articleStats;
   } else {
-    this.articleStats.push(articleStats);
+    self.articleStats.push(articleStats);
   }
 };
 

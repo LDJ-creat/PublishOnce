@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { body } from 'express-validator';
 import { 
-  authenticateToken, 
+  authenticate, 
   verifyRefreshToken,
   rateLimit 
 } from '../middleware/auth';
@@ -71,11 +71,11 @@ router.post('/login', loginValidation, login);
 router.post('/refresh', verifyRefreshToken, refreshToken);
 
 // 获取当前用户信息
-router.get('/me', authenticateToken, getCurrentUser);
+router.get('/me', authenticate, getCurrentUser);
 
 // 更新用户信息
 router.put('/profile',
-  authenticateToken,
+  authenticate,
   [
     body('username')
       .optional()
@@ -93,23 +93,23 @@ router.put('/profile',
 
 // 修改密码
 router.put('/password',
-  authenticateToken,
+  authenticate,
   changePasswordValidation,
   changePassword
 );
 
 // 用户登出
-router.post('/logout', authenticateToken, logout);
+router.post('/logout', authenticate, logout);
 
 // 验证Token
-router.get('/verify', authenticateToken, verifyToken);
+router.get('/verify', authenticate, verifyToken);
 
 // 获取平台配置
-router.get('/platforms', authenticateToken, getPlatforms);
+router.get('/platforms', authenticate, getPlatforms);
 
 // 更新平台配置
 router.put('/platforms/:platform',
-  authenticateToken,
+  authenticate,
   [
     body('isEnabled')
       .isBoolean()
@@ -123,6 +123,6 @@ router.put('/platforms/:platform',
 );
 
 // 删除平台配置
-router.delete('/platforms/:platform', authenticateToken, deletePlatformConfig);
+router.delete('/platforms/:platform', authenticate, deletePlatformConfig);
 
 export default router;

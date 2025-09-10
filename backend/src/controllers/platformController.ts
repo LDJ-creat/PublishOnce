@@ -7,7 +7,7 @@ import mongoose from 'mongoose';
 /**
  * 获取所有可用平台
  */
-export const getAllPlatforms = async (req: Request, res: Response) => {
+export const getAllPlatforms = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     const platforms = await Platform.find({ isActive: true })
       .select('name displayName description icon apiEndpoint supportedFeatures')
@@ -29,7 +29,7 @@ export const getAllPlatforms = async (req: Request, res: Response) => {
 /**
  * 获取单个平台详情
  */
-export const getPlatformById = async (req: Request, res: Response) => {
+export const getPlatformById = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     const { id } = req.params;
 
@@ -65,7 +65,7 @@ export const getPlatformById = async (req: Request, res: Response) => {
 /**
  * 创建新平台配置（管理员功能）
  */
-export const createPlatform = async (req: Request, res: Response) => {
+export const createPlatform = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     // 验证请求数据
     const errors = validationResult(req);
@@ -136,7 +136,7 @@ export const createPlatform = async (req: Request, res: Response) => {
 /**
  * 更新平台配置（管理员功能）
  */
-export const updatePlatform = async (req: Request, res: Response) => {
+export const updatePlatform = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     // 验证请求数据
     const errors = validationResult(req);
@@ -212,7 +212,7 @@ export const updatePlatform = async (req: Request, res: Response) => {
 /**
  * 删除平台（管理员功能）
  */
-export const deletePlatform = async (req: Request, res: Response) => {
+export const deletePlatform = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     // 检查用户权限
     if (req.user?.role !== 'admin') {
@@ -269,7 +269,7 @@ export const deletePlatform = async (req: Request, res: Response) => {
 /**
  * 测试平台连接
  */
-export const testPlatformConnection = async (req: Request, res: Response) => {
+export const testPlatformConnection = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     // 验证请求数据
     const errors = validationResult(req);
@@ -301,7 +301,7 @@ export const testPlatformConnection = async (req: Request, res: Response) => {
       });
     }
 
-    if (!platform.isActive) {
+    if (!(platform as any).isActive) {
       return res.status(400).json({
         success: false,
         message: '平台已禁用'
@@ -322,7 +322,7 @@ export const testPlatformConnection = async (req: Request, res: Response) => {
         );
 
         const configData = {
-          platform: platform.name,
+          platform: platform.name as any,
           isEnabled: true,
           isActive: true,
           credentials,
@@ -336,10 +336,7 @@ export const testPlatformConnection = async (req: Request, res: Response) => {
             ...configData
           };
         } else {
-          user.platformConfigs.push({
-            ...configData,
-            createdAt: new Date()
-          });
+          user.platformConfigs.push(configData);
         }
 
         await user.save();
@@ -363,7 +360,7 @@ export const testPlatformConnection = async (req: Request, res: Response) => {
 /**
  * 获取平台统计信息
  */
-export const getPlatformStats = async (req: Request, res: Response) => {
+export const getPlatformStats = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     // 获取平台使用统计
     const platformUsageStats = await User.aggregate([

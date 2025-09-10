@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { body, query, param } from 'express-validator';
-import { authenticateToken } from '../middleware/auth';
+import { authenticate } from '../middleware/auth';
 import {
   createArticle,
   getArticles,
@@ -16,7 +16,7 @@ import {
 const router = Router();
 
 // 所有路由都需要认证
-router.use(authenticateToken);
+router.use(authenticate);
 
 // 验证规则
 const createArticleValidation = [

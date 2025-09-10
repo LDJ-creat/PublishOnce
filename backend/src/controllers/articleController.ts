@@ -7,7 +7,7 @@ import mongoose from 'mongoose';
 /**
  * 创建文章
  */
-export const createArticle = async (req: Request, res: Response) => {
+export const createArticle = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     // 验证请求数据
     const errors = validationResult(req);
@@ -56,7 +56,7 @@ export const createArticle = async (req: Request, res: Response) => {
 /**
  * 获取文章列表
  */
-export const getArticles = async (req: Request, res: Response) => {
+export const getArticles = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     const userId = req.user?.id;
     const {
@@ -138,7 +138,7 @@ export const getArticles = async (req: Request, res: Response) => {
 /**
  * 获取单篇文章
  */
-export const getArticleById = async (req: Request, res: Response) => {
+export const getArticleById = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     const { id } = req.params;
     const userId = req.user?.id;
@@ -180,7 +180,7 @@ export const getArticleById = async (req: Request, res: Response) => {
 /**
  * 更新文章
  */
-export const updateArticle = async (req: Request, res: Response) => {
+export const updateArticle = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     // 验证请求数据
     const errors = validationResult(req);
@@ -235,7 +235,7 @@ export const updateArticle = async (req: Request, res: Response) => {
 /**
  * 删除文章
  */
-export const deleteArticle = async (req: Request, res: Response) => {
+export const deleteArticle = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     const { id } = req.params;
     const userId = req.user?.id;
@@ -277,7 +277,7 @@ export const deleteArticle = async (req: Request, res: Response) => {
 /**
  * 发布文章到平台
  */
-export const publishArticle = async (req: Request, res: Response) => {
+export const publishArticle = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     // 验证请求数据
     const errors = validationResult(req);
@@ -316,17 +316,17 @@ export const publishArticle = async (req: Request, res: Response) => {
 
     // 更新平台发布状态
     for (const platformName of platforms) {
-      const platformIndex = article.platforms.findIndex(
+      const platformIndex = (article.platforms as any).findIndex(
         (p: any) => p.platform === platformName
       );
 
       if (platformIndex >= 0) {
         // 更新现有平台状态
-        article.platforms[platformIndex].status = 'publishing';
-        article.platforms[platformIndex].publishedAt = new Date();
+        (article.platforms as any)[platformIndex].status = 'publishing';
+        (article.platforms as any)[platformIndex].publishedAt = new Date();
       } else {
         // 添加新平台
-        article.platforms.push({
+        (article.platforms as any).push({
           platform: platformName,
           status: 'publishing',
           publishedAt: new Date()
@@ -336,7 +336,7 @@ export const publishArticle = async (req: Request, res: Response) => {
 
     // 更新文章状态为已发布
     article.status = 'published';
-    article.publishedAt = new Date();
+    (article as any).publishedAt = new Date();
 
     await article.save();
 
@@ -345,10 +345,16 @@ export const publishArticle = async (req: Request, res: Response) => {
     const { PlatformCredential } = await import('../models/PlatformCredential');
     
     // 获取用户的平台登录凭据
-    const credentials = await PlatformCredential.getUserCredentials(userId!, platforms);
+    const credentialDocs = await PlatformCredential.find({ userId: userId!, platform: { $in: platforms } });
+    
+    // 转换为对象格式
+    const credentials: { [platform: string]: any } = {};
+    credentialDocs.forEach(doc => {
+      credentials[doc.platform] = doc.credentials;
+    });
     
     // 检查是否所有平台都有凭据
-    const missingCredentials = platforms.filter(platform => !credentials[platform]);
+    const missingCredentials = platforms.filter((platform: string) => !credentials[platform]);
     if (missingCredentials.length > 0) {
       return res.status(400).json({
         success: false,
@@ -386,7 +392,7 @@ export const publishArticle = async (req: Request, res: Response) => {
 /**
  * 获取发布状态
  */
-export const getPublishStatus = async (req: Request, res: Response) => {
+export const getPublishStatus = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     const { id } = req.params;
     const userId = req.user?.id;
@@ -457,7 +463,7 @@ export const getPublishStatus = async (req: Request, res: Response) => {
 /**
  * 获取文章统计信息
  */
-export const getArticleStats = async (req: Request, res: Response) => {
+export const getArticleStats = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     const userId = req.user?.id;
 
@@ -555,7 +561,7 @@ export const getArticleStats = async (req: Request, res: Response) => {
 /**
  * 批量操作文章
  */
-export const batchOperateArticles = async (req: Request, res: Response) => {
+export const batchOperateArticles = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     // 验证请求数据
     const errors = validationResult(req);
@@ -621,9 +627,9 @@ export const batchOperateArticles = async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      message: `批量操作完成，影响 ${result.modifiedCount || result.deletedCount} 篇文章`,
+      message: `批量操作完成，影响 ${(result as any).modifiedCount || (result as any).deletedCount || 0} 篇文章`,
       data: {
-        affected: result.modifiedCount || result.deletedCount
+        affected: (result as any).modifiedCount || (result as any).deletedCount || 0
       }
     });
   } catch (error) {

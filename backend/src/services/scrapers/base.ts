@@ -89,7 +89,11 @@ export abstract class BasePlatformScraper {
     this.page = await this.browser?.newPage({
       userAgent: this.getRandomUserAgent(),
       viewport: { width: 1920, height: 1080 },
-    });
+    }) || null;
+
+    if (!this.page) {
+      throw new Error('Failed to create browser page');
+    }
 
     // 设置请求拦截，过滤不必要的资源
     await this.page.route('**/*', (route) => {

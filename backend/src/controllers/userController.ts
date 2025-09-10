@@ -7,7 +7,7 @@ import bcrypt from 'bcryptjs';
 /**
  * 用户注册
  */
-export const register = async (req: Request, res: Response) => {
+export const register = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     // 验证请求数据
     const errors = validationResult(req);
@@ -77,7 +77,7 @@ export const register = async (req: Request, res: Response) => {
 /**
  * 用户登录
  */
-export const login = async (req: Request, res: Response) => {
+export const login = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     // 验证请求数据
     const errors = validationResult(req);
@@ -157,7 +157,7 @@ export const login = async (req: Request, res: Response) => {
 /**
  * 获取当前用户信息
  */
-export const getCurrentUser = async (req: Request, res: Response) => {
+export const getCurrentUser = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     const userId = req.user?.id;
     
@@ -198,7 +198,7 @@ export const getCurrentUser = async (req: Request, res: Response) => {
 /**
  * 更新用户信息
  */
-export const updateProfile = async (req: Request, res: Response) => {
+export const updateProfile = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     // 验证请求数据
     const errors = validationResult(req);
@@ -274,7 +274,7 @@ export const updateProfile = async (req: Request, res: Response) => {
 /**
  * 修改密码
  */
-export const changePassword = async (req: Request, res: Response) => {
+export const changePassword = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     // 验证请求数据
     const errors = validationResult(req);
@@ -327,7 +327,7 @@ export const changePassword = async (req: Request, res: Response) => {
 /**
  * 更新平台配置
  */
-export const updatePlatformConfig = async (req: Request, res: Response) => {
+export const updatePlatformConfig = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     // 验证请求数据
     const errors = validationResult(req);
@@ -394,7 +394,7 @@ export const updatePlatformConfig = async (req: Request, res: Response) => {
 /**
  * 删除平台配置
  */
-export const deletePlatformConfig = async (req: Request, res: Response) => {
+export const deletePlatformConfig = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     const userId = req.user?.id;
     const { platform } = req.params;
@@ -433,7 +433,7 @@ export const deletePlatformConfig = async (req: Request, res: Response) => {
 /**
  * 刷新Token
  */
-export const refreshToken = async (req: Request, res: Response) => {
+export const refreshToken = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     const user = req.user;
     if (!user) {
@@ -487,7 +487,7 @@ export const logout = async (req: Request, res: Response) => {
 /**
  * 验证Token
  */
-export const verifyToken = async (req: Request, res: Response) => {
+export const verifyToken = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     const user = req.user;
     if (!user) {
@@ -518,7 +518,7 @@ export const verifyToken = async (req: Request, res: Response) => {
 /**
  * 获取平台配置列表
  */
-export const getPlatforms = async (req: Request, res: Response) => {
+export const getPlatforms = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     const user = req.user;
     if (!user) {

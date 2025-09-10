@@ -309,5 +309,5 @@ export default {
   notifyPublishFailed,
   notifyScrapeCompleted,
   notifySystemAlert,
-  sendBatchNotifications,
+  batchNotify,
 };

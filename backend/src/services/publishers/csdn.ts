@@ -23,6 +23,10 @@ export class CSDNPublisher extends BasePlatformPublisher {
     try {
       console.log('开始登录CSDN...');
       
+      if (!this.page) {
+        throw new Error('浏览器页面未初始化');
+      }
+
       await this.page.goto('https://passport.csdn.net/login');
       await this.waitForLoad();
 
@@ -85,6 +89,10 @@ export class CSDNPublisher extends BasePlatformPublisher {
     try {
       console.log(`开始发布文章到CSDN: ${article.title}`);
       
+      if (!this.page) {
+        throw new Error('浏览器页面未初始化');
+      }
+
       // 进入写博客页面
       await this.page.goto('https://editor.csdn.net/md/');
       await this.waitForLoad();
@@ -242,6 +250,10 @@ export class CSDNPublisher extends BasePlatformPublisher {
    */
   async checkLoginStatus(): Promise<boolean> {
     try {
+      if (!this.page) {
+        throw new Error('浏览器页面未初始化');
+      }
+
       await this.page.goto('https://blog.csdn.net');
       await this.wait(3000);
       
@@ -259,6 +271,10 @@ export class CSDNPublisher extends BasePlatformPublisher {
    */
   async getPublishedArticles(limit: number = 10): Promise<any[]> {
     try {
+      if (!this.page) {
+        throw new Error('浏览器页面未初始化');
+      }
+
       // 进入个人博客管理页面
       await this.page.goto('https://blog.csdn.net/nav/watchers');
       await this.waitForLoad();
@@ -291,6 +307,24 @@ export class CSDNPublisher extends BasePlatformPublisher {
       console.error('获取CSDN文章列表失败:', error);
       return [];
     }
+  }
+
+  /**
+   * 更新文章
+   */
+  async updateArticle(articleId: string, article: ArticleData): Promise<boolean> {
+    // CSDN暂不支持文章更新功能
+    console.warn('CSDN平台暂不支持文章更新功能');
+    return false;
+  }
+
+  /**
+   * 删除文章
+   */
+  async deleteArticle(articleId: string): Promise<boolean> {
+    // CSDN暂不支持文章删除功能
+    console.warn('CSDN平台暂不支持文章删除功能');
+    return false;
   }
 }
 

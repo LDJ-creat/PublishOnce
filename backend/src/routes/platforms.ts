@@ -9,7 +9,7 @@ import {
   testPlatformConnection,
   getPlatformStats
 } from '../controllers/platformController';
-import { authenticateToken } from '../middleware/auth';
+import { authenticate } from '../middleware/auth';
 
 const router = express.Router();
 
@@ -155,7 +155,7 @@ router.get('/', getAllPlatforms);
 router.get('/:id', platformIdValidation, getPlatformById);
 
 // 需要认证的路由
-router.use(authenticateToken);
+router.use(authenticate);
 
 // 测试平台连接
 router.post('/test-connection', testConnectionValidation, testPlatformConnection);

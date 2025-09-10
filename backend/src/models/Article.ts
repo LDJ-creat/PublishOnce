@@ -167,33 +167,33 @@ const articleSchema = new Schema<IArticle>({
 articleSchema.pre('save', function(next) {
   if (this.isModified('content')) {
     // 计算字数（去除HTML标签和Markdown语法）
-    const plainText = this.content
+    const plainText = (this as any).content
       .replace(/<[^>]*>/g, '') // 移除HTML标签
       .replace(/[#*`_~\[\]()]/g, '') // 移除Markdown语法
       .replace(/\s+/g, ' ') // 合并空白字符
       .trim();
     
-    this.wordCount = plainText.length;
+    (this as any).wordCount = plainText.length;
     
     // 计算阅读时间（假设每分钟阅读200个字符）
-    this.readingTime = Math.ceil(this.wordCount / 200);
+    (this as any).readingTime = Math.ceil((this as any).wordCount / 200);
     
     // 自动生成摘要（如果没有提供）
-    if (!this.summary) {
-      this.summary = plainText.substring(0, 200) + (plainText.length > 200 ? '...' : '');
+    if (!(this as any).summary) {
+      (this as any).summary = plainText.substring(0, 200) + (plainText.length > 200 ? '...' : '');
     }
   }
   
   // 生成SEO友好的slug
-  if (this.isModified('title') && !this.seo?.slug) {
-    const slug = this.title
+  if (this.isModified('title') && !(this as any).seo?.slug) {
+    const slug = (this as any).title
       .toLowerCase()
       .replace(/[^a-z0-9\u4e00-\u9fa5]/g, '-')
       .replace(/-+/g, '-')
       .replace(/^-|-$/g, '');
     
-    if (!this.seo) this.seo = {};
-    this.seo.slug = `${slug}-${Date.now()}`;
+    if (!(this as any).seo) (this as any).seo = {};
+    (this as any).seo.slug = `${slug}-${Date.now()}`;
   }
   
   next();

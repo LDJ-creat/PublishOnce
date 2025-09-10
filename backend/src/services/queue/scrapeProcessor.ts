@@ -22,6 +22,12 @@ export interface ScrapeJobData {
   articleUrl?: string;
   userId?: string;
   articleIds?: string[]; // 批量抓取
+  config?: {
+    scrapeUserArticles?: boolean;
+    scrapeFollowedAuthors?: boolean;
+    scrapeTrendingTopics?: boolean;
+    [key: string]: any;
+  };
 }
 
 /**
@@ -220,14 +226,14 @@ async function processBatchStatsJob(job: Job<ScrapeJobData>): Promise<ScrapeJobR
           continue;
         }
 
-        const platformInfo = article.platforms.find((p: any) => p.platform === platform);
-        if (!platformInfo || !platformInfo.url) {
+        const platformInfo = article.publishedPlatforms.find((p: any) => p.platform === platform);
+        if (!platformInfo || !platformInfo.platformUrl) {
           errors.push(`文章未在${platform}平台发布: ${articleId}`);
           continue;
         }
 
         // 抓取统计数据
-        const result = await scraper.scrapeArticleStats(platformInfo.url);
+        const result = await scraper.scrapeArticleStats(platformInfo.platformUrl);
         
         if (result.success && result.data) {
           result.data.articleId = articleId;
@@ -327,8 +333,8 @@ export async function addScheduledScrapeJobs(): Promise<void> {
     console.log(`找到 ${articles.length} 篇已发布文章，准备添加抓取任务`);
 
     for (const article of articles) {
-      for (const platform of article.platforms) {
-        if (platform.status === 'published' && platform.url) {
+      for (const platform of article.publishedPlatforms) {
+        if (platform.status === 'success' && platform.platformUrl) {
           // 添加统计抓取任务，随机延迟避免同时请求
           const delay = Math.floor(Math.random() * 300000); // 0-5分钟随机延迟
           
@@ -336,7 +342,7 @@ export async function addScheduledScrapeJobs(): Promise<void> {
             type: 'article-stats',
             platform: platform.platform,
             articleId: article._id.toString(),
-            articleUrl: platform.url,
+            articleUrl: platform.platformUrl,
           }, delay);
         }
       }

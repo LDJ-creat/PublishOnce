@@ -5,7 +5,9 @@ import { Platform } from '../../models/Platform';
 import { CSDNPublisher } from '../publishers/csdn';
 import { JuejinPublisher } from '../publishers/juejin';
 import { HuaweiPublisher } from '../publishers/huawei';
-import { BasePlatformPublisher, LoginCredentials, ArticlePublishData } from '../publishers/base';
+import { WechatPublisher } from '../publishers/wechat';
+import { BasePlatformPublisher, LoginCredentials, ArticleData } from '../publishers/base';
+import { PlatformType } from '../../types';
 
 /**
  * 发布任务数据接口
@@ -36,11 +38,13 @@ export interface PublishJobResult {
 function getPlatformPublisher(platformName: string): BasePlatformPublisher | null {
   switch (platformName.toLowerCase()) {
     case 'csdn':
-      return new CSDNPublisher();
+      return new CSDNPublisher('csdn', 'https://blog.csdn.net');
     case 'juejin':
-      return new JuejinPublisher();
+      return new JuejinPublisher('juejin', 'https://juejin.cn');
     case 'huawei':
-      return new HuaweiPublisher();
+      return new HuaweiPublisher('huawei', 'https://developer.huawei.com');
+    case 'wechat':
+      return new WechatPublisher('wechat', 'https://mp.weixin.qq.com');
     default:
       return null;
   }
@@ -49,7 +53,7 @@ function getPlatformPublisher(platformName: string): BasePlatformPublisher | nul
 /**
  * 转换文章数据为发布数据格式
  */
-function convertArticleToPublishData(article: any): ArticlePublishData {
+function convertArticleToPublishData(article: any): ArticleData {
   return {
     title: article.title,
     content: article.content,
@@ -121,22 +125,23 @@ export async function processPublishJob(job: Job<PublishJobData>): Promise<Publi
 
         // 更新文章中的平台信息
         if (publishResult.success) {
-          const platformIndex = article.platforms.findIndex(
+          const platformIndex = article.publishedPlatforms.findIndex(
             (p: any) => p.platform === platformName
           );
 
           if (platformIndex >= 0) {
-            article.platforms[platformIndex].status = 'published';
-            article.platforms[platformIndex].url = publishResult.url;
-            article.platforms[platformIndex].articleId = publishResult.articleId;
+            article.publishedPlatforms[platformIndex].status = 'success';
+            article.publishedPlatforms[platformIndex].platformUrl = publishResult.url;
+            article.publishedPlatforms[platformIndex].platformArticleId = publishResult.articleId;
+            article.publishedPlatforms[platformIndex].publishedAt = new Date();
           } else {
-            article.platforms.push({
-              platform: platformName,
-              status: 'published',
-              url: publishResult.url,
-              articleId: publishResult.articleId,
-              publishedAt: new Date()
-            });
+            article.publishedPlatforms.push({
+               platform: platformName as PlatformType,
+               status: 'success',
+               platformUrl: publishResult.url,
+               platformArticleId: publishResult.articleId,
+               publishedAt: new Date()
+             });
           }
           
           // 发送成功通知
@@ -147,12 +152,12 @@ export async function processPublishJob(job: Job<PublishJobData>): Promise<Publi
             console.error('发送成功通知失败:', notifyError);
           }
         } else {
-          const platformIndex = article.platforms.findIndex(
+          const platformIndex = article.publishedPlatforms.findIndex(
             (p: any) => p.platform === platformName
           );
           if (platformIndex >= 0) {
-            article.platforms[platformIndex].status = 'failed';
-            article.platforms[platformIndex].error = publishResult.error;
+            article.publishedPlatforms[platformIndex].status = 'failed';
+            article.publishedPlatforms[platformIndex].error = publishResult.error;
           }
           
           // 发送失败通知
@@ -195,7 +200,7 @@ export async function processPublishJob(job: Job<PublishJobData>): Promise<Publi
     if (allSuccess) {
       article.status = 'published';
     } else if (hasSuccess) {
-      article.status = 'partial_published';
+      article.status = 'published';
     }
     
     await article.save();

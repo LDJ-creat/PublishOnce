@@ -21,13 +21,13 @@ const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '30d';
 
 // JWT工具函数
 export const generateToken = (userId: string): string => {
-  return jwt.sign({ userId }, JWT_SECRET, {
+  return (jwt.sign as any)({ userId }, JWT_SECRET, {
     expiresIn: JWT_EXPIRES_IN
   });
 };
 
 export const generateRefreshToken = (userId: string): string => {
-  return jwt.sign({ userId, type: 'refresh' }, JWT_SECRET, {
+  return (jwt.sign as any)({ userId, type: 'refresh' }, JWT_SECRET, {
     expiresIn: JWT_REFRESH_EXPIRES_IN
   });
 };
@@ -227,6 +227,9 @@ setInterval(() => {
 }, 5 * 60 * 1000); // 每5分钟清理一次
 
 // 导出认证相关的工具函数
+// 导出别名以保持向后兼容
+export const verifyRefreshToken = refreshTokenAuth;
+
 export const authUtils = {
   generateToken,
   generateRefreshToken,

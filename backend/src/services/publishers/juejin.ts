@@ -7,7 +7,6 @@ import { BasePlatformPublisher, LoginCredentials, PublishResult, ArticleData } f
 export interface JuejinCredentials extends LoginCredentials {
   phone?: string;
   email?: string;
-  password?: string;
 }
 
 /**
@@ -23,6 +22,10 @@ export class JuejinPublisher extends BasePlatformPublisher {
   async login(credentials: JuejinCredentials): Promise<boolean> {
     try {
       console.log('开始登录掘金...');
+      
+      if (!this.page) {
+        throw new Error('浏览器页面未初始化');
+      }
       
       await this.page.goto('https://juejin.cn/login');
       await this.waitForLoad();
@@ -79,9 +82,13 @@ export class JuejinPublisher extends BasePlatformPublisher {
   async publishArticle(article: ArticleData): Promise<PublishResult> {
     try {
       console.log(`开始发布文章到掘金: ${article.title}`);
-      
-      // 进入创作者中心
-      await this.page.goto('https://juejin.cn/editor/drafts/new?v=2');
+    
+    if (!this.page) {
+      throw new Error('浏览器页面未初始化');
+    }
+    
+    // 进入写文章页面
+    await this.page.goto('https://juejin.cn/editor/drafts/new?v=2');
       await this.waitForLoad();
 
       // 等待编辑器加载
@@ -262,10 +269,16 @@ export class JuejinPublisher extends BasePlatformPublisher {
    */
   async checkLoginStatus(): Promise<boolean> {
     try {
+      if (!this.page) {
+        throw new Error('页面未初始化');
+      }
       await this.page.goto('https://juejin.cn');
       await this.wait(3000);
       
       // 检查是否有用户头像
+      if (!this.page) {
+        throw new Error('页面未初始化');
+      }
       const avatar = await this.page.locator('.avatar').isVisible();
       return avatar;
     } catch (error) {
@@ -279,6 +292,10 @@ export class JuejinPublisher extends BasePlatformPublisher {
    */
   async getPublishedArticles(limit: number = 10): Promise<any[]> {
     try {
+      if (!this.page) {
+        throw new Error('浏览器页面未初始化');
+      }
+      
       // 进入个人主页
       await this.page.goto('https://juejin.cn/user/center/posts');
       await this.waitForLoad();
@@ -318,6 +335,10 @@ export class JuejinPublisher extends BasePlatformPublisher {
    */
   async getArticleStats(articleUrl: string): Promise<any> {
     try {
+      if (!this.page) {
+        throw new Error('浏览器页面未初始化');
+      }
+      
       await this.page.goto(articleUrl);
       await this.waitForLoad();
 
@@ -365,6 +386,24 @@ export class JuejinPublisher extends BasePlatformPublisher {
       console.error('获取掘金文章统计失败:', error);
       return null;
     }
+  }
+
+  /**
+   * 更新文章
+   */
+  async updateArticle(articleId: string, article: ArticleData): Promise<boolean> {
+    // 掘金暂不支持文章更新功能
+    console.warn('掘金平台暂不支持文章更新功能');
+    return false;
+  }
+
+  /**
+   * 删除文章
+   */
+  async deleteArticle(articleId: string): Promise<boolean> {
+    // 掘金暂不支持文章删除功能
+    console.warn('掘金平台暂不支持文章删除功能');
+    return false;
   }
 
   /**

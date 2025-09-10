@@ -74,7 +74,7 @@ async function initializeProcessors() {
     
     // 导入并注册通知处理器
     const notificationProcessor = await import('./notificationProcessor');
-    notificationQueue.process('notification', 3, notificationProcessor.processNotificationJob);
+    notificationQueue.process('notification', 3, notificationProcessor.processNotification);
     
     console.log('队列处理器初始化完成');
   } catch (error) {

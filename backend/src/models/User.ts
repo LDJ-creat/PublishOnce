@@ -51,7 +51,8 @@ const userSchema = new Schema<IUser>({
   password: {
     type: String,
     required: true,
-    minlength: 6
+    minlength: 6,
+    select: false
   },
   avatar: {
     type: String,
@@ -94,7 +95,9 @@ const userSchema = new Schema<IUser>({
   timestamps: true,
   toJSON: {
     transform: function(doc, ret) {
-      delete ret.password;
+      if (ret.password) {
+        delete (ret as any).password;
+      }
       return ret;
     }
   }

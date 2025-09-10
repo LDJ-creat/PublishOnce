@@ -22,9 +22,13 @@ export class WechatPublisher extends BasePlatformPublisher {
   async login(credentials: WechatCredentials): Promise<boolean> {
     try {
       console.log('开始登录微信公众号...');
-      
-      await this.page.goto(`${this.baseUrl}/cgi-bin/loginpage`);
-      await this.waitForLoad();
+    
+    if (!this.page) {
+      throw new Error('浏览器页面未初始化');
+    }
+    
+    await this.page.goto(`${this.baseUrl}/cgi-bin/loginpage`);
+    await this.waitForLoad();
 
       // 输入用户名
       await this.safeType('input[name="account"]', credentials.username);
@@ -85,6 +89,10 @@ export class WechatPublisher extends BasePlatformPublisher {
   async publishArticle(article: ArticleData): Promise<PublishResult> {
     try {
       console.log(`开始发布文章到微信公众号: ${article.title}`);
+      
+      if (!this.page) {
+        throw new Error('浏览器页面未初始化');
+      }
       
       // 进入素材管理页面
       await this.page.goto(`${this.baseUrl}/cgi-bin/appmsg?t=media/appmsg_edit_v2&action=edit&isNew=1&type=10&createType=0&token=${await this.getToken()}&lang=zh_CN`);
@@ -225,6 +233,10 @@ export class WechatPublisher extends BasePlatformPublisher {
    */
   private async getToken(): Promise<string> {
     try {
+      if (!this.page) {
+        throw new Error('浏览器页面未初始化');
+      }
+      
       const url = this.page.url();
       const tokenMatch = url.match(/token=([^&]+)/);
       return tokenMatch ? tokenMatch[1] : '';
@@ -250,10 +262,32 @@ export class WechatPublisher extends BasePlatformPublisher {
   }
 
   /**
+   * 更新文章
+   */
+  async updateArticle(articleId: string, article: ArticleData): Promise<boolean> {
+    // 微信公众号暂不支持文章更新功能
+    console.warn('微信公众号暂不支持文章更新功能');
+    return false;
+  }
+
+  /**
+   * 删除文章
+   */
+  async deleteArticle(articleId: string): Promise<boolean> {
+    // 微信公众号暂不支持文章删除功能
+    console.warn('微信公众号暂不支持文章删除功能');
+    return false;
+  }
+
+  /**
    * 检查登录状态
    */
   async checkLoginStatus(): Promise<boolean> {
     try {
+      if (!this.page) {
+        throw new Error('浏览器页面未初始化');
+      }
+      
       await this.page.goto(`${this.baseUrl}/cgi-bin/home`);
       await this.wait(3000);
       

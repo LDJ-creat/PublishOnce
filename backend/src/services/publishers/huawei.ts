@@ -23,6 +23,10 @@ export class HuaweiPublisher extends BasePlatformPublisher {
     try {
       console.log('开始登录华为开发者社区...');
       
+      if (!this.page) {
+        throw new Error('浏览器页面未初始化');
+      }
+      
       await this.page.goto('https://id1.cloud.huawei.com/CAS/portal/login.html');
       await this.waitForLoad();
 
@@ -91,6 +95,10 @@ export class HuaweiPublisher extends BasePlatformPublisher {
   async publishArticle(article: ArticleData): Promise<PublishResult> {
     try {
       console.log(`开始发布文章到华为开发者社区: ${article.title}`);
+      
+      if (!this.page) {
+        throw new Error('浏览器页面未初始化');
+      }
       
       // 进入创作中心
       await this.page.goto('https://developer.huawei.com/consumer/cn/forum/home');
@@ -280,6 +288,10 @@ export class HuaweiPublisher extends BasePlatformPublisher {
    */
   async checkLoginStatus(): Promise<boolean> {
     try {
+      if (!this.page) {
+        throw new Error('浏览器页面未初始化');
+      }
+      
       await this.page.goto('https://developer.huawei.com/consumer/cn/forum/home');
       await this.wait(3000);
       
@@ -297,6 +309,10 @@ export class HuaweiPublisher extends BasePlatformPublisher {
    */
   async getPublishedArticles(limit: number = 10): Promise<any[]> {
     try {
+      if (!this.page) {
+        throw new Error('浏览器页面未初始化');
+      }
+      
       // 进入个人中心
       await this.page.goto('https://developer.huawei.com/consumer/cn/forum/user/posts');
       await this.waitForLoad();
@@ -351,6 +367,10 @@ export class HuaweiPublisher extends BasePlatformPublisher {
    */
   async getArticleStats(articleUrl: string): Promise<any> {
     try {
+      if (!this.page) {
+        throw new Error('浏览器页面未初始化');
+      }
+      
       await this.page.goto(articleUrl);
       await this.waitForLoad();
 
@@ -390,6 +410,24 @@ export class HuaweiPublisher extends BasePlatformPublisher {
       console.error('获取华为开发者社区文章统计失败:', error);
       return null;
     }
+  }
+
+  /**
+   * 更新文章
+   */
+  async updateArticle(articleId: string, article: ArticleData): Promise<boolean> {
+    // 华为开发者社区暂不支持文章更新功能
+    console.warn('华为开发者社区暂不支持文章更新功能');
+    return false;
+  }
+
+  /**
+   * 删除文章
+   */
+  async deleteArticle(articleId: string): Promise<boolean> {
+    // 华为开发者社区暂不支持文章删除功能
+    console.warn('华为开发者社区暂不支持文章删除功能');
+    return false;
   }
 
   /**

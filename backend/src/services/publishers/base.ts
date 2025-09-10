@@ -15,6 +15,7 @@ export interface LoginCredentials {
  */
 export interface PublishResult {
   success: boolean;
+  platform: string;
   articleId?: string;
   url?: string;
   message?: string;
@@ -24,7 +25,7 @@ export interface PublishResult {
 /**
  * 文章发布数据接口
  */
-export interface ArticlePublishData {
+export interface ArticleData {
   title: string;
   content: string;
   summary?: string;
@@ -32,6 +33,9 @@ export interface ArticlePublishData {
   category?: string;
   coverImage?: string;
   isDraft?: boolean;
+  author?: string;
+  publishImmediately?: boolean;
+  isOriginal?: boolean;
 }
 
 /**
@@ -60,6 +64,9 @@ export abstract class BasePlatformPublisher {
       slowMo: 100, // 减慢操作速度，避免被检测
     });
     
+    if (!this.browser) {
+      throw new Error('浏览器未初始化');
+    }
     this.page = await this.browser.newPage({
       userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       viewport: { width: 1920, height: 1080 },
@@ -97,17 +104,30 @@ export abstract class BasePlatformPublisher {
    * 随机等待时间（避免被检测）
    */
   protected async randomWait(min: number = 1000, max: number = 3000): Promise<void> {
-    const waitTime = Math.floor(Math.random() * (max - min + 1)) + min;
-    await this.wait(waitTime);
+    const delay = Math.floor(Math.random() * (max - min + 1)) + min;
+    await this.wait(delay);
+  }
+
+  /**
+   * 等待页面加载完成
+   */
+  protected async waitForLoad(): Promise<void> {
+    if (!this.page) {
+      throw new Error('浏览器页面未初始化');
+    }
+    await this.page.waitForLoadState('networkidle');
+    await this.wait(1000); // 额外等待确保页面完全加载
   }
 
   /**
    * 安全点击元素
    */
   protected async safeClick(selector: string, timeout: number = 10000): Promise<boolean> {
+    if (!this.page) {
+      console.error('页面未初始化');
+      return false;
+    }
     try {
-      if (!this.page) return false;
-      
       await this.page.waitForSelector(selector, { timeout });
       await this.randomWait(500, 1500);
       await this.page.click(selector);
@@ -122,9 +142,11 @@ export abstract class BasePlatformPublisher {
    * 安全填写输入框
    */
   protected async safeType(selector: string, text: string, timeout: number = 10000): Promise<boolean> {
+    if (!this.page) {
+      console.error('页面未初始化');
+      return false;
+    }
     try {
-      if (!this.page) return false;
-      
       await this.page.waitForSelector(selector, { timeout });
       await this.page.fill(selector, '');
       await this.randomWait(300, 800);
@@ -140,24 +162,32 @@ export abstract class BasePlatformPublisher {
    * 截图保存（用于调试）
    */
   protected async saveScreenshot(filename: string): Promise<void> {
-    if (this.page && process.env.NODE_ENV !== 'production') {
-      await this.page.screenshot({ 
-        path: `screenshots/${this.platformName}_${filename}_${Date.now()}.png`,
-        fullPage: true 
-      });
+    if (!this.page) {
+      console.warn('页面未初始化，无法保存截图');
+      return;
+    }
+    if (process.env.NODE_ENV !== 'production') {
+      try {
+        await this.page.screenshot({ 
+          path: `screenshots/${this.platformName}_${filename}_${Date.now()}.png`,
+          fullPage: true 
+        });
+      } catch (error) {
+        console.warn('保存截图失败:', error);
+      }
     }
   }
 
   // 抽象方法，子类必须实现
   abstract login(credentials: LoginCredentials): Promise<boolean>;
-  abstract publish(article: ArticlePublishData): Promise<PublishResult>;
-  abstract updateArticle(articleId: string, article: ArticlePublishData): Promise<boolean>;
+  abstract publishArticle(article: ArticleData): Promise<PublishResult>;
+  abstract updateArticle(articleId: string, article: ArticleData): Promise<boolean>;
   abstract deleteArticle(articleId: string): Promise<boolean>;
 
   /**
    * 执行发布流程（模板方法）
    */
-  async executePublish(credentials: LoginCredentials, article: ArticlePublishData): Promise<PublishResult> {
+  async executePublish(credentials: LoginCredentials, article: ArticleData): Promise<PublishResult> {
     try {
       await this.initBrowser();
       
@@ -166,18 +196,23 @@ export abstract class BasePlatformPublisher {
       if (!loginSuccess) {
         return {
           success: false,
+          platform: this.platformName,
           error: '登录失败'
         };
       }
 
       // 发布文章
-      const result = await this.publish(article);
+      const result = await this.publishArticle(article);
       
-      return result;
+      return {
+        ...result,
+        platform: this.platformName
+      };
     } catch (error) {
       console.error(`${this.platformName} 发布失败:`, error);
       return {
         success: false,
+        platform: this.platformName,
         error: error instanceof Error ? error.message : '未知错误'
       };
     } finally {
