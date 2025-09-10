@@ -196,8 +196,11 @@ export class HuaweiScraper extends BasePlatformScraper {
               reply.author = replyAuthor || '匿名用户';
               reply.content = replyContent || '';
               reply.publishTime = this.parseDate(replyTime || '') || new Date();
-              reply.id = `${comment.id}_reply_${comment.replies.length}`;
+              reply.id = `${comment.id}_reply_${comment.replies?.length || 0}`;
 
+              if (!comment.replies) {
+                comment.replies = [];
+              }
               comment.replies.push(reply);
             } catch (error) {
               console.warn('解析回复失败:', error);
