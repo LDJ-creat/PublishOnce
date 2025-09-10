@@ -86,7 +86,7 @@ export abstract class BasePlatformScraper {
       slowMo: 200, // 减慢操作速度
     });
     
-    this.page = await this.browser.newPage({
+    this.page = await this.browser?.newPage({
       userAgent: this.getRandomUserAgent(),
       viewport: { width: 1920, height: 1080 },
     });

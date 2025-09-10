@@ -3,10 +3,16 @@
  */
 export interface IUser {
   _id: string;
+  id: string;
   username: string;
   email: string;
   password: string;
   avatar?: string;
+  role: string;
+  isActive: boolean;
+  platformConfigs?: any[];
+  preferences?: any;
+  lastLoginAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -111,7 +111,7 @@ class TaskScheduler {
         await scrapeProcessor.addScrapeJob({
           userId: credential.userId._id.toString(),
           platform: credential.platform,
-          type: 'user-focused',
+          type: 'article-stats',
           config: {
             scrapeUserArticles: true,
             scrapeFollowedAuthors: true,
@@ -140,9 +140,9 @@ class TaskScheduler {
     for (const platform of platforms) {
       try {
         await scrapeProcessor.addScrapeJob({
-          userId: 'system',
+          type: 'batch-stats',
           platform,
-          type: 'batch-stats'
+          articleIds: [] // 空数组，表示全平台抓取
         });
         
         console.log(`${platform} 平台全量抓取任务已添加到队列`);
