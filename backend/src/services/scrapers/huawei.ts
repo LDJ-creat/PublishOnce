@@ -359,28 +359,28 @@ export class HuaweiScraper extends BasePlatformScraper {
   protected async handleAntiBot(): Promise<boolean> {
     try {
       // 检查是否有验证码或反爬虫页面
-      const captchaExists = await this.page.locator('.captcha-container').isVisible();
-      if (captchaExists) {
-        console.log('检测到华为开发者社区验证码，等待处理...');
-        await this.wait(5000);
-        
-        // 尝试刷新页面
-        await this.page.reload();
-        await this.waitForLoad();
-      }
-
-      // 检查是否有登录提示
-      const loginPrompt = await this.page.locator('.login-modal').isVisible();
-      if (loginPrompt) {
-        console.log('检测到登录提示，关闭弹窗');
-        try {
-          if (this.page) {
-            await this.page.locator('.login-modal .close-btn').click();
-            await this.wait(1000);
-          }
-        } catch (error) {
-          // 忽略关闭失败
+      if (this.page) {
+        const captchaExists = await this.page.locator('.captcha-container').isVisible();
+        if (captchaExists) {
+          console.log('检测到华为开发者社区验证码，等待处理...');
+          await this.wait(5000);
+          
+          // 尝试刷新页面
+          await this.page.reload();
+          await this.waitForLoad();
         }
+
+        // 检查是否有登录提示
+         const loginPrompt = await this.page.locator('.login-modal').isVisible();
+         if (loginPrompt) {
+           console.log('检测到登录提示，关闭弹窗');
+           try {
+             await this.page.locator('.login-modal .close-btn').click();
+             await this.wait(1000);
+           } catch (error) {
+             // 忽略关闭失败
+           }
+         }
       }
 
       // 检查是否有Cookie同意弹窗
