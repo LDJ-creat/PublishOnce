@@ -11,6 +11,11 @@ const dotenv_1 = __importDefault(require("dotenv"));
 const database_1 = require("./config/database");
 const errorHandler_1 = require("./middleware/errorHandler");
 const notFoundHandler_1 = require("./middleware/notFoundHandler");
+const scheduler_1 = __importDefault(require("./services/scheduler"));
+const auth_1 = __importDefault(require("./routes/auth"));
+const articles_1 = __importDefault(require("./routes/articles"));
+const platforms_1 = __importDefault(require("./routes/platforms"));
+const credentials_1 = __importDefault(require("./routes/credentials"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3000;
@@ -27,6 +32,10 @@ app.get('/health', (req, res) => {
         version: '1.0.0'
     });
 });
+app.use('/api/auth', auth_1.default);
+app.use('/api/articles', articles_1.default);
+app.use('/api/platforms', platforms_1.default);
+app.use('/api/credentials', credentials_1.default);
 app.use('/api/v1', (req, res) => {
     res.json({ message: 'API routes will be implemented here' });
 });
@@ -34,12 +43,21 @@ app.use(notFoundHandler_1.notFoundHandler);
 app.use(errorHandler_1.errorHandler);
 const startServer = async () => {
     try {
-        await (0, database_1.connectDatabase)();
-        console.log('✅ Database connected successfully');
+        try {
+            await (0, database_1.connectDatabase)();
+            console.log('✅ Database connected successfully');
+        }
+        catch (dbError) {
+            console.warn('⚠️ Database connection failed, running without database:', dbError.message);
+            console.warn('💡 To enable database features, please install and start MongoDB');
+        }
+        await scheduler_1.default.initialize();
+        console.log('✅ Task scheduler initialized');
         app.listen(PORT, () => {
             console.log(`🚀 Server is running on port ${PORT}`);
             console.log(`📊 Health check: http://localhost:${PORT}/health`);
             console.log(`🔗 API endpoint: http://localhost:${PORT}/api/v1`);
+            console.log('\n🎉 PublishOnce Backend is ready!');
         });
     }
     catch (error) {
@@ -47,12 +65,14 @@ const startServer = async () => {
         process.exit(1);
     }
 };
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
     console.log('🛑 SIGTERM received, shutting down gracefully');
+    await scheduler_1.default.shutdown();
     process.exit(0);
 });
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
     console.log('🛑 SIGINT received, shutting down gracefully');
+    await scheduler_1.default.shutdown();
     process.exit(0);
 });
 startServer();
