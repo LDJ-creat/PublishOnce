@@ -8,9 +8,15 @@
     "dev": "nodemon src/app.ts",
     "build": "tsc",
     "build:watch": "tsc -w",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "init-platforms": "ts-node src/scripts/initPlatforms.ts"
   },
-  "keywords": ["publish", "blog", "aggregation", "platform"],
+  "keywords": [
+    "publish",
+    "blog",
+    "aggregation",
+    "platform"
+  ],
   "author": "PublishOnce Team",
   "license": "MIT",
   "dependencies": {
@@ -21,6 +27,7 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.2",
     "express": "^5.1.0",
+    "express-validator": "^7.2.1",
     "helmet": "^8.1.0",
     "ioredis": "^5.7.0",
     "jsonwebtoken": "^9.0.2",
