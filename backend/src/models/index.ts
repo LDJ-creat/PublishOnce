@@ -1,0 +1,38 @@
+// 统一导出所有数据模型
+export { User, default as UserModel } from './User';
+export { Article, default as ArticleModel } from './Article';
+export { Platform, default as PlatformModel } from './Platform';
+export { Stats, default as StatsModel } from './Stats';
+
+// 导出模型类型
+export type {
+  IUser,
+  IArticle,
+  IPlatform,
+  IStats,
+  UserPlatformConfig,
+  PlatformInfo,
+  PlatformConfig,
+  ArticleStats,
+  CommentData
+} from '../types';
+
+// 模型初始化函数
+export const initializeModels = async () => {
+  try {
+    // 这里可以添加模型初始化逻辑
+    // 比如创建默认数据、索引等
+    console.log('Models initialized successfully');
+  } catch (error) {
+    console.error('Error initializing models:', error);
+    throw error;
+  }
+};
+
+// 导出所有模型的数组，方便批量操作
+export const allModels = {
+  User,
+  Article,
+  Platform,
+  Stats
+};
