@@ -7,6 +7,7 @@ import { connectDatabase } from './config/database';
 import { errorHandler } from './middleware/errorHandler';
 import { notFoundHandler } from './middleware/notFoundHandler';
 import authRoutes from './routes/auth';
+import articleRoutes from './routes/articles';
 
 // 加载环境变量
 dotenv.config();
@@ -33,6 +34,7 @@ app.get('/health', (req, res) => {
 
 // API路由
 app.use('/api/auth', authRoutes);
+app.use('/api/articles', articleRoutes);
 
 app.use('/api/v1', (req, res) => {
   res.json({ message: 'API routes will be implemented here' });
