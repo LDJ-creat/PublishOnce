@@ -340,32 +340,113 @@ export const publishArticle = async (req: Request, res: Response) => {
 
     await article.save();
 
-    // TODO: 这里应该调用实际的平台发布服务
-    // 模拟发布过程
-    setTimeout(async () => {
-      try {
-        const updatedArticle = await Article.findById(id);
-        if (updatedArticle) {
-          updatedArticle.platforms.forEach((platform: any) => {
-            if (platforms.includes(platform.platform) && platform.status === 'publishing') {
-              platform.status = 'published';
-              platform.url = `https://${platform.platform}.com/article/${id}`; // 模拟URL
-            }
-          });
-          await updatedArticle.save();
-        }
-      } catch (error) {
-        console.error('更新发布状态错误:', error);
-      }
-    }, 2000);
+    // 添加发布任务到队列
+    const { addPublishJob } = await import('../services/queue/publishProcessor');
+    const { PlatformCredential } = await import('../models/PlatformCredential');
+    
+    // 获取用户的平台登录凭据
+    const credentials = await PlatformCredential.getUserCredentials(userId!, platforms);
+    
+    // 检查是否所有平台都有凭据
+    const missingCredentials = platforms.filter(platform => !credentials[platform]);
+    if (missingCredentials.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `缺少以下平台的登录凭据: ${missingCredentials.join(', ')}`,
+        missingPlatforms: missingCredentials
+      });
+    }
+    
+    const publishJob = await addPublishJob({
+      articleId: id,
+      userId: userId!,
+      platforms,
+      credentials
+    });
+    
+    console.log(`发布任务已添加到队列: ${publishJob.id}`);
 
     res.json({
       success: true,
       message: '文章发布中，请稍后查看发布状态',
-      data: { article }
+      data: { 
+        article,
+        jobId: publishJob.id
+      }
     });
   } catch (error) {
     console.error('发布文章错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '服务器内部错误'
+    });
+  }
+};
+
+/**
+ * 获取发布状态
+ */
+export const getPublishStatus = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+    const { jobId } = req.query;
+
+    // 验证文章ID格式
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: '无效的文章ID'
+      });
+    }
+
+    // 查找文章
+    const article = await Article.findOne({
+      _id: id,
+      author: userId
+    });
+
+    if (!article) {
+      return res.status(404).json({
+        success: false,
+        message: '文章不存在或无权访问'
+      });
+    }
+
+    let jobStatus = null;
+    if (jobId) {
+      try {
+        const { publishQueue } = await import('../services/queue/index');
+        const job = await publishQueue.getJob(jobId as string);
+        
+        if (job) {
+          const state = await job.getState();
+          const progress = job.progress();
+          
+          jobStatus = {
+            id: job.id,
+            state,
+            progress,
+            processedOn: job.processedOn,
+            finishedOn: job.finishedOn,
+            failedReason: job.failedReason,
+            returnvalue: job.returnvalue
+          };
+        }
+      } catch (error) {
+        console.error('获取任务状态失败:', error);
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        article,
+        jobStatus
+      }
+    });
+  } catch (error) {
+    console.error('获取发布状态错误:', error);
     res.status(500).json({
       success: false,
       message: '服务器内部错误'

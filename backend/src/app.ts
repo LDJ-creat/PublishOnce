@@ -6,9 +6,11 @@ import dotenv from 'dotenv';
 import { connectDatabase } from './config/database';
 import { errorHandler } from './middleware/errorHandler';
 import { notFoundHandler } from './middleware/notFoundHandler';
+import taskScheduler from './services/scheduler';
 import authRoutes from './routes/auth';
 import articleRoutes from './routes/articles';
 import platformRoutes from './routes/platforms';
+import credentialRoutes from './routes/credentials';
 
 // 加载环境变量
 dotenv.config();
@@ -37,6 +39,7 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/articles', articleRoutes);
 app.use('/api/platforms', platformRoutes);
+app.use('/api/credentials', credentialRoutes);
 
 app.use('/api/v1', (req, res) => {
   res.json({ message: 'API routes will be implemented here' });
@@ -60,6 +63,10 @@ const startServer = async () => {
       console.warn('💡 To enable database features, please install and start MongoDB');
     }
     
+    // 初始化任务调度器
+     await taskScheduler.initialize();
+     console.log('✅ Task scheduler initialized');
+    
     // 启动服务器
     app.listen(PORT, () => {
       console.log(`🚀 Server is running on port ${PORT}`);
@@ -74,13 +81,15 @@ const startServer = async () => {
 };
 
 // 优雅关闭
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
   console.log('🛑 SIGTERM received, shutting down gracefully');
+  await taskScheduler.shutdown();
   process.exit(0);
 });
 
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
   console.log('🛑 SIGINT received, shutting down gracefully');
+  await taskScheduler.shutdown();
   process.exit(0);
 });
 

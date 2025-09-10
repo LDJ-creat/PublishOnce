@@ -8,6 +8,7 @@ import {
   updateArticle,
   deleteArticle,
   publishArticle,
+  getPublishStatus,
   getArticleStats,
   batchOperateArticles
 } from '../controllers/articleController';
@@ -178,6 +179,12 @@ router.post('/:id/publish',
   param('id').isMongoId().withMessage('文章ID格式无效'),
   publishArticleValidation,
   publishArticle
+);
+
+// 获取发布状态
+router.get('/:id/publish/status',
+  param('id').isMongoId().withMessage('文章ID格式无效'),
+  getPublishStatus
 );
 
 export default router;
