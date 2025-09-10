@@ -5,8 +5,9 @@ import { BasePlatformScraper, ArticleStats, Comment, UserProfile, ScrapeResult }
  * 华为开发者社区抓取器
  */
 export class HuaweiScraper extends BasePlatformScraper {
-  protected platformName = '华为开发者社区';
-  protected baseUrl = 'https://developer.huawei.com';
+  constructor() {
+    super('华为开发者社区', 'https://developer.huawei.com');
+  }
 
   /**
    * 从URL中提取文章ID
@@ -373,22 +374,26 @@ export class HuaweiScraper extends BasePlatformScraper {
       if (loginPrompt) {
         console.log('检测到登录提示，关闭弹窗');
         try {
-          await this.page.locator('.login-modal .close-btn').click();
-          await this.wait(1000);
+          if (this.page) {
+            await this.page.locator('.login-modal .close-btn').click();
+            await this.wait(1000);
+          }
         } catch (error) {
           // 忽略关闭失败
         }
       }
 
       // 检查是否有Cookie同意弹窗
-      const cookieConsent = await this.page.locator('.cookie-consent').isVisible();
-      if (cookieConsent) {
-        console.log('检测到Cookie同意弹窗，点击同意');
-        try {
-          await this.page.locator('.cookie-consent .accept-btn').click();
-          await this.wait(1000);
-        } catch (error) {
-          // 忽略点击失败
+      if (this.page) {
+        const cookieConsent = await this.page.locator('.cookie-consent').isVisible();
+        if (cookieConsent) {
+          console.log('检测到Cookie同意弹窗，点击同意');
+          try {
+            await this.page.locator('.cookie-consent .accept-btn').click();
+            await this.wait(1000);
+          } catch (error) {
+            // 忽略点击失败
+          }
         }
       }
 

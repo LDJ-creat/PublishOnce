@@ -5,8 +5,9 @@ import { BasePlatformScraper, ArticleStats, Comment, UserProfile, ScrapeResult }
  * 掘金抓取器
  */
 export class JuejinScraper extends BasePlatformScraper {
-  protected platformName = '掘金';
-  protected baseUrl = 'https://juejin.cn';
+  constructor() {
+    super('掘金', 'https://juejin.cn');
+  }
 
   /**
    * 从URL中提取文章ID

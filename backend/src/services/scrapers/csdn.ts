@@ -5,8 +5,9 @@ import { BasePlatformScraper, ArticleStats, Comment, UserProfile, ScrapeResult }
  * CSDN抓取器
  */
 export class CSDNScraper extends BasePlatformScraper {
-  protected platformName = 'CSDN';
-  protected baseUrl = 'https://blog.csdn.net';
+  constructor() {
+    super('CSDN', 'https://blog.csdn.net');
+  }
 
   /**
    * 从URL中提取文章ID
