@@ -1,8 +1,16 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { User } from '../models/User';
+import { User, IUserDocument } from '../models/User';
 import { AppError } from './errorHandler';
 import { IUser } from '../types';
+
+// JWT Payload 接口
+interface JwtPayload {
+  userId: string;
+  type?: string;
+  iat?: number;
+  exp?: number;
+}
 
 // 扩展Request接口以包含用户信息
 declare global {
@@ -25,8 +33,8 @@ export const generateToken = (userId: string): string => {
     throw new Error('JWT_SECRET is not defined');
   }
   return jwt.sign({ userId }, JWT_SECRET, {
-    expiresIn: JWT_EXPIRES_IN as string
-  });
+    expiresIn: JWT_EXPIRES_IN
+  } as jwt.SignOptions);
 };
 
 export const generateRefreshToken = (userId: string): string => {
@@ -34,13 +42,13 @@ export const generateRefreshToken = (userId: string): string => {
     throw new Error('JWT_SECRET is not defined');
   }
   return jwt.sign({ userId, type: 'refresh' }, JWT_SECRET, {
-    expiresIn: JWT_REFRESH_EXPIRES_IN as string
-  });
+    expiresIn: JWT_REFRESH_EXPIRES_IN
+  } as jwt.SignOptions);
 };
 
-export const verifyToken = (token: string): any => {
+export const verifyToken = (token: string): JwtPayload => {
   try {
-    return jwt.verify(token, JWT_SECRET);
+    return jwt.verify(token, JWT_SECRET) as JwtPayload;
   } catch (error) {
     throw new AppError('Invalid or expired token', 401);
   }
@@ -65,7 +73,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     }
 
     // 查找用户
-    const user = await User.findById(decoded.userId).select('-password');
+    const user = await User.findById(decoded.userId).select('-password') as IUserDocument | null;
     if (!user) {
       throw new AppError('User not found', 401);
     }
@@ -75,7 +83,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     }
 
     // 将用户信息添加到请求对象
-    req.user = user;
+    req.user = user as unknown as IUser;
     req.userId = user._id.toString();
 
     next();
@@ -93,9 +101,9 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
       const decoded = verifyToken(token);
       
       if (decoded.type !== 'refresh') {
-        const user = await User.findById(decoded.userId).select('-password');
+        const user = await User.findById(decoded.userId).select('-password') as IUserDocument | null;
         if (user && user.isActive) {
-          req.user = user;
+          req.user = user as unknown as IUser;
           req.userId = user._id.toString();
         }
       }
@@ -165,12 +173,12 @@ export const refreshTokenAuth = async (req: Request, res: Response, next: NextFu
       throw new AppError('Invalid refresh token', 401);
     }
 
-    const user = await User.findById(decoded.userId).select('-password');
+    const user = await User.findById(decoded.userId).select('-password') as IUserDocument | null;
     if (!user || !user.isActive) {
       throw new AppError('User not found or inactive', 401);
     }
 
-    req.user = user;
+    req.user = user as unknown as IUser;
     req.userId = user._id.toString();
 
     next();

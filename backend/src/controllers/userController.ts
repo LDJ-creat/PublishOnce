@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { User } from '../models/User';
+import { User, IUserDocument } from '../models/User';
 import { generateToken, generateRefreshToken } from '../middleware/auth';
 import { validationResult } from 'express-validator';
 import bcrypt from 'bcryptjs';
@@ -24,7 +24,7 @@ export const register = async (req: Request, res: Response): Promise<Response | 
     // 检查用户是否已存在
     const existingUser = await User.findOne({
       $or: [{ email }, { username }]
-    });
+    }) as IUserDocument | null;
 
     if (existingUser) {
       return res.status(409).json({
@@ -38,7 +38,7 @@ export const register = async (req: Request, res: Response): Promise<Response | 
       username,
       email,
       password // 密码会在模型的pre save中间件中自动加密
-    });
+    }) as unknown as IUserDocument;
 
     await user.save();
 
@@ -92,7 +92,7 @@ export const login = async (req: Request, res: Response): Promise<Response | voi
     const { email, password } = req.body;
 
     // 查找用户
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({ email }).select('+password') as IUserDocument | null;
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -161,7 +161,7 @@ export const getCurrentUser = async (req: Request, res: Response): Promise<Respo
   try {
     const userId = req.user?.id;
     
-    const user = await User.findById(userId);
+    const user = await User.findById(userId) as IUserDocument | null;
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -218,7 +218,7 @@ export const updateProfile = async (req: Request, res: Response): Promise<Respon
       const existingUser = await User.findOne({
         username,
         _id: { $ne: userId }
-      });
+      }) as IUserDocument | null;
 
       if (existingUser) {
         return res.status(409).json({
@@ -237,7 +237,7 @@ export const updateProfile = async (req: Request, res: Response): Promise<Respon
       userId,
       updateData,
       { new: true, runValidators: true }
-    );
+    ) as IUserDocument | null;
 
     if (!user) {
       return res.status(404).json({
@@ -290,7 +290,7 @@ export const changePassword = async (req: Request, res: Response): Promise<Respo
     const { currentPassword, newPassword } = req.body;
 
     // 获取用户信息（包含密码）
-    const user = await User.findById(userId).select('+password');
+    const user = await User.findById(userId).select('+password') as IUserDocument | null;
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -342,12 +342,17 @@ export const updatePlatformConfig = async (req: Request, res: Response): Promise
     const userId = req.user?.id;
     const { platform, config } = req.body;
 
-    const user = await User.findById(userId);
+    const user = await User.findById(userId) as IUserDocument | null;
     if (!user) {
       return res.status(404).json({
         success: false,
         message: '用户不存在'
       });
+    }
+
+    // 确保 platformConfigs 数组存在
+    if (!user.platformConfigs) {
+      user.platformConfigs = [];
     }
 
     // 更新平台配置
@@ -360,16 +365,16 @@ export const updatePlatformConfig = async (req: Request, res: Response): Promise
       user.platformConfigs[platformIndex] = {
         ...user.platformConfigs[platformIndex],
         ...config,
-        platform,
-        updatedAt: new Date()
+        platform
       };
     } else {
       // 添加新配置
       user.platformConfigs.push({
         platform,
-        ...config,
-        createdAt: new Date(),
-        updatedAt: new Date()
+        isEnabled: true,
+        isActive: true,
+        credentials: {},
+        ...config
       });
     }
 
@@ -399,7 +404,7 @@ export const deletePlatformConfig = async (req: Request, res: Response): Promise
     const userId = req.user?.id;
     const { platform } = req.params;
 
-    const user = await User.findById(userId);
+    const user = await User.findById(userId) as IUserDocument | null;
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -408,7 +413,7 @@ export const deletePlatformConfig = async (req: Request, res: Response): Promise
     }
 
     // 删除平台配置
-    user.platformConfigs = user.platformConfigs.filter(
+    user.platformConfigs = (user.platformConfigs || []).filter(
       (pc: any) => pc.platform !== platform
     );
 
@@ -528,7 +533,7 @@ export const getPlatforms = async (req: Request, res: Response): Promise<Respons
       });
     }
 
-    const userDoc = await User.findById(user.id);
+    const userDoc = await User.findById(user.id) as IUserDocument | null;
     if (!userDoc) {
       return res.status(404).json({
         success: false,

@@ -226,7 +226,7 @@ async function processBatchStatsJob(job: Job<ScrapeJobData>): Promise<ScrapeJobR
           continue;
         }
 
-        const platformInfo = article.publishedPlatforms.find((p: any) => p.platform === platform);
+        const platformInfo = article.publishedPlatforms?.find((p: any) => p.platform === platform);
         if (!platformInfo || !platformInfo.platformUrl) {
           errors.push(`文章未在${platform}平台发布: ${articleId}`);
           continue;
@@ -333,7 +333,7 @@ export async function addScheduledScrapeJobs(): Promise<void> {
     console.log(`找到 ${articles.length} 篇已发布文章，准备添加抓取任务`);
 
     for (const article of articles) {
-      for (const platform of article.publishedPlatforms) {
+      for (const platform of article.publishedPlatforms || []) {
         if (platform.status === 'success' && platform.platformUrl) {
           // 添加统计抓取任务，随机延迟避免同时请求
           const delay = Math.floor(Math.random() * 300000); // 0-5分钟随机延迟

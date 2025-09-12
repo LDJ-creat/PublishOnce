@@ -1,6 +1,24 @@
 import mongoose from 'mongoose';
 
 /**
+ * 用户平台配置接口
+ */
+export interface IUserPlatformConfig {
+  platform: 'csdn' | 'juejin' | 'huawei' | 'hexo';
+  isEnabled: boolean;
+  credentials: {
+    username?: string;
+    password?: string;
+    token?: string;
+    cookies?: string;
+    apiKey?: string;
+    customConfig?: any;
+  };
+  lastLoginAt?: Date;
+  isActive: boolean;
+}
+
+/**
  * 用户相关类型定义
  */
 export interface IUser {
@@ -13,15 +31,20 @@ export interface IUser {
   bio?: string;
   role: string;
   isActive: boolean;
-  platformConfigs?: any[];
-  preferences?: any;
+  platformConfigs?: IUserPlatformConfig[];
+  preferences?: {
+    defaultCategory?: string;
+    defaultTags?: string[];
+    autoPublish?: boolean;
+    notificationEnabled?: boolean;
+  };
   lastLoginAt?: Date;
   createdAt: Date;
   updatedAt: Date;
   // 实例方法
   comparePassword(candidatePassword: string): Promise<boolean>;
-  getPlatformConfig?(platform: string): any;
-  updatePlatformConfig?(platform: string, config: any): void;
+  getPlatformConfig?(platform: string): IUserPlatformConfig | undefined;
+  updatePlatformConfig?(platform: string, config: Partial<IUserPlatformConfig>): void;
 }
 
 /**
@@ -246,9 +269,9 @@ export interface PlatformConfig {
 }
 
 /**
- * 用户平台配置
+ * 用户平台配置集合接口（已废弃，使用 IUser.platformConfigs）
  */
-export interface IUserPlatformConfig {
+export interface IUserPlatformConfigCollection {
   _id: string;
   userId: string;
   platforms: IPlatformConfig[];

@@ -298,7 +298,7 @@ interface ArticleStats {
 
 1. **克隆项目**
 ```bash
-git clone https://github.com/your-username/PublishOnce.git
+git clone https://github.com/LDJ-creat/PublishOnce
 cd PublishOnce
 ```
 

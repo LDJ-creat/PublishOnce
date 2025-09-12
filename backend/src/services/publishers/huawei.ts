@@ -1,5 +1,5 @@
 import { Page } from 'playwright';
-import { BasePlatformPublisher, LoginCredentials, PublishResult, ArticlePublishData } from './base';
+import { BasePlatformPublisher, LoginCredentials, PublishResult, ArticleData } from './base';
 
 /**
  * 华为开发者社区登录凭据
@@ -36,13 +36,13 @@ export class HuaweiPublisher extends BasePlatformPublisher {
 
       // 处理验证码（如果有）
       try {
-        const captchaImg = await this.page.waitForSelector('#verifyCode_img', { timeout: 3000 });
+        const captchaImg = await this.page?.waitForSelector('#verifyCode_img', { timeout: 3000 });
         if (captchaImg) {
           console.log('检测到验证码，需要手动输入');
           await this.saveScreenshot('huawei-captcha.png');
           
           // 等待用户手动输入验证码
-          await this.page.waitForFunction(
+          await this.page?.waitForFunction(
             () => {
               const input = document.querySelector('#verifyCode') as HTMLInputElement;
               return input && input.value.length > 0;
@@ -60,20 +60,20 @@ export class HuaweiPublisher extends BasePlatformPublisher {
       // 等待登录成功，可能需要处理二次验证
       try {
         // 检查是否需要短信验证
-        const smsVerify = await this.page.waitForSelector('.sms-verify', { timeout: 5000 });
+        const smsVerify = await this.page?.waitForSelector('.sms-verify', { timeout: 5000 });
         if (smsVerify) {
           console.log('需要短信验证，请手动完成');
           await this.saveScreenshot('huawei-sms-verify.png');
           
           // 等待短信验证完成
-          await this.page!.waitForNavigation({ timeout: 120000 });
+          await this.page?.waitForNavigation({ timeout: 120000 });
         }
       } catch (error) {
         // 没有短信验证，继续
       }
 
       // 验证登录成功
-      await this.page!.waitForURL('**/developer.huawei.com/**', { timeout: 30000 });
+      await this.page?.waitForURL('**/developer.huawei.com/**', { timeout: 30000 });
       
       console.log('华为开发者社区登录成功');
       return true;
@@ -88,13 +88,17 @@ export class HuaweiPublisher extends BasePlatformPublisher {
   /**
    * 发布文章到华为开发者社区
    */
-  async publish(article: ArticlePublishData): Promise<PublishResult> {
+  async publishArticle(article: ArticleData): Promise<PublishResult> {
+    return this.publish(article);
+  }
+
+  async publish(article: ArticleData): Promise<PublishResult> {
     try {
       console.log(`开始发布文章到华为开发者社区: ${article.title}`);
       
       // 进入创作中心
       if (!await this.safeGoto('https://developer.huawei.com/consumer/cn/forum/home')) {
-        return { success: false, error: '无法访问发布页面' };
+        return { success: false, platform: '华为开发者社区', error: '无法访问发布页面' };
       }
       await this.waitForLoad();
 
@@ -240,12 +244,12 @@ export class HuaweiPublisher extends BasePlatformPublisher {
         // 获取文章链接
         let articleUrl = '';
         if (this.page?.url().includes('/topic/')) {
-        articleUrl = this.page?.url() || '';
+          articleUrl = this.page?.url() || '';
         } else {
           // 尝试从成功提示中获取链接
           try {
-            const linkElement = await this.page.locator('.article-link').first();
-            if (await linkElement.isVisible()) {
+            const linkElement = await this.page?.locator('.article-link').first();
+            if (linkElement && await linkElement.isVisible()) {
               articleUrl = await linkElement.getAttribute('href') || '';
               if (articleUrl && !articleUrl.startsWith('http')) {
                 articleUrl = `https://developer.huawei.com${articleUrl}`;
@@ -267,7 +271,7 @@ export class HuaweiPublisher extends BasePlatformPublisher {
         
       } catch (error) {
         // 检查是否有错误提示
-        const errorMsg = await this.page.locator('.error-tip').textContent();
+        const errorMsg = await this.page?.locator('.error-tip').textContent();
         throw new Error(errorMsg || '发布超时或失败');
       }
       
@@ -288,12 +292,12 @@ export class HuaweiPublisher extends BasePlatformPublisher {
    */
   async checkLoginStatus(): Promise<boolean> {
     try {
-      await this.page.goto('https://developer.huawei.com/consumer/cn/forum/home');
+      await this.page?.goto('https://developer.huawei.com/consumer/cn/forum/home');
       await this.wait(3000);
       
       // 检查是否有用户信息
-      const userInfo = await this.page.locator('.user-info').isVisible();
-      return userInfo;
+      const userInfo = await this.page?.locator('.user-info').isVisible();
+        return userInfo || false;
     } catch (error) {
       console.error('检查华为开发者社区登录状态失败:', error);
       return false;
@@ -306,7 +310,7 @@ export class HuaweiPublisher extends BasePlatformPublisher {
   async getPublishedArticles(limit: number = 10): Promise<any[]> {
     try {
       // 进入个人中心
-      await this.page.goto('https://developer.huawei.com/consumer/cn/forum/user/posts');
+      await this.page?.goto('https://developer.huawei.com/consumer/cn/forum/user/posts');
       await this.waitForLoad();
 
       const articles = [];
@@ -342,7 +346,7 @@ export class HuaweiPublisher extends BasePlatformPublisher {
   /**
    * 更新文章
    */
-  async updateArticle(articleId: string, article: ArticlePublishData): Promise<boolean> {
+  async updateArticle(articleId: string, article: ArticleData): Promise<boolean> {
     try {
       console.log(`更新华为开发者社区文章: ${articleId}`);
       // TODO: 实现文章更新逻辑

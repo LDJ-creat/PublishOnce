@@ -120,6 +120,23 @@ export abstract class BasePlatformPublisher {
   }
 
   /**
+   * 安全导航到页面
+   */
+  protected async safeGoto(url: string, timeout: number = 30000): Promise<boolean> {
+    if (!this.page) {
+      console.error('页面未初始化');
+      return false;
+    }
+    try {
+      await this.page.goto(url, { timeout, waitUntil: 'networkidle' });
+      return true;
+    } catch (error) {
+      console.error(`导航到页面失败 ${url}:`, error);
+      return false;
+    }
+  }
+
+  /**
    * 安全点击元素
    */
   protected async safeClick(selector: string, timeout: number = 10000): Promise<boolean> {

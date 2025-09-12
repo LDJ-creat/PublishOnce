@@ -1,5 +1,5 @@
 import { Page } from 'playwright';
-import { BasePlatformPublisher, LoginCredentials, PublishResult, ArticlePublishData } from './base';
+import { BasePlatformPublisher, LoginCredentials, PublishResult, ArticleData } from './base';
 
 /**
  * 微信公众号登录凭据
@@ -40,13 +40,13 @@ export class WechatPublisher extends BasePlatformPublisher {
       // 等待可能的验证码或二维码扫描
       try {
         // 检查是否需要验证码
-        const captchaInput = await this.page.waitForSelector('input[name="imgcode"]', { timeout: 3000 });
+        const captchaInput = await this.page?.waitForSelector('input[name="imgcode"]', { timeout: 3000 });
         if (captchaInput) {
           console.log('检测到验证码，需要手动输入');
           await this.saveScreenshot('wechat-captcha.png');
           
           // 等待用户手动输入验证码并点击登录
-          await this.page.waitForNavigation({ timeout: 60000 });
+          await this.page?.waitForNavigation({ timeout: 60000 });
         }
       } catch (error) {
         // 没有验证码，继续
@@ -82,7 +82,11 @@ export class WechatPublisher extends BasePlatformPublisher {
   /**
    * 发布文章到微信公众号
    */
-  async publish(article: ArticlePublishData): Promise<PublishResult> {
+  async publishArticle(article: ArticleData): Promise<PublishResult> {
+    return this.publish(article);
+  }
+
+  async publish(article: ArticleData): Promise<PublishResult> {
     try {
       console.log(`开始发布文章到微信公众号: ${article.title}`);
       
@@ -195,9 +199,11 @@ export class WechatPublisher extends BasePlatformPublisher {
       // 获取文章链接（发布后才有）
       let articleUrl = '';
       try {
-        const urlElement = await this.page?.locator('.article_url').first();
-        if (urlElement && await urlElement.isVisible()) {
-          articleUrl = await urlElement.textContent() || '';
+        if (this.page) {
+          const urlElement = await this.page.locator('.article_url').first();
+          if (urlElement && await urlElement.isVisible()) {
+            articleUrl = await urlElement.textContent() || '';
+          }
         }
       } catch (error) {
         console.warn('获取文章链接失败:', error);
@@ -207,7 +213,7 @@ export class WechatPublisher extends BasePlatformPublisher {
       
       return {
         success: true,
-        // platform: '微信公众号', // 移除不存在的属性
+        platform: '微信公众号',
         url: articleUrl,
         message: article.publishImmediately ? '文章发布成功' : '文章已保存为草稿',
       };
@@ -289,7 +295,7 @@ export class WechatPublisher extends BasePlatformPublisher {
   /**
    * 更新文章
    */
-  async updateArticle(articleId: string, article: ArticlePublishData): Promise<boolean> {
+  async updateArticle(articleId: string, article: ArticleData): Promise<boolean> {
     try {
       console.log(`更新微信公众号文章: ${articleId}`);
       // TODO: 实现文章更新逻辑

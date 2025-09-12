@@ -195,7 +195,7 @@ export const testCredential = async (req: Request, res: Response): Promise<Respo
       }
 
       // 测试登录
-      const loginResult = await publisher.login(credential.credentials);
+      const loginResult = await publisher.login(credential.credentials as any);
       
       if (loginResult) {
         // 更新最后使用时间

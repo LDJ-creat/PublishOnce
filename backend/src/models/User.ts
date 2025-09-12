@@ -1,6 +1,36 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, { Document, Schema, Model } from 'mongoose';
 import bcrypt from 'bcryptjs';
 import { IUser, IUserPlatformConfig } from '../types';
+
+// 扩展 IUser 接口以包含 Mongoose Document 方法
+interface IUserDocument extends Document {
+  _id: mongoose.Types.ObjectId;
+  username: string;
+  email: string;
+  password?: string;
+  avatar?: string;
+  bio?: string;
+  role: 'user' | 'admin';
+  isActive: boolean;
+  lastLoginAt?: Date;
+  platformConfigs: IUserPlatformConfig[];
+  preferences: {
+    defaultCategory: string;
+    defaultTags: string[];
+    autoPublish: boolean;
+    notificationEnabled: boolean;
+  };
+  createdAt: Date;
+  updatedAt: Date;
+  comparePassword(candidatePassword: string): Promise<boolean>;
+  getPlatformConfig(platform: string): IUserPlatformConfig | undefined;
+  updatePlatformConfig(platform: string, config: Partial<IUserPlatformConfig>): void;
+}
+
+// 定义静态方法接口
+interface IUserModel extends Model<IUserDocument> {
+  findByEmailOrUsername(identifier: string): Promise<IUserDocument | null>;
+}
 
 // 用户平台配置子文档
 const userPlatformConfigSchema = new Schema<IUserPlatformConfig>({
@@ -32,7 +62,7 @@ const userPlatformConfigSchema = new Schema<IUserPlatformConfig>({
 });
 
 // 用户主文档
-const userSchema = new Schema<IUser>({
+const userSchema = new Schema<IUserDocument>({
   username: {
     type: String,
     required: true,
@@ -102,10 +132,10 @@ const userSchema = new Schema<IUser>({
 
 // 密码加密中间件
 userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
+  if (!this.isModified('password') || !this.password) return next();
   
   try {
-    const salt = await bcrypt.genSalt(12);
+    const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
     next();
   } catch (error) {
@@ -115,6 +145,7 @@ userSchema.pre('save', async function(next) {
 
 // 实例方法：验证密码
 userSchema.methods.comparePassword = async function(candidatePassword: string): Promise<boolean> {
+  if (!this.password) return false;
   return bcrypt.compare(candidatePassword, this.password);
 };
 
@@ -148,5 +179,6 @@ userSchema.index({ email: 1 });
 userSchema.index({ username: 1 });
 userSchema.index({ createdAt: -1 });
 
-export const User = mongoose.model<IUser>('User', userSchema);
+export const User = mongoose.model<IUserDocument, IUserModel>('User', userSchema);
+export { IUserDocument, IUserModel };
 export default User;

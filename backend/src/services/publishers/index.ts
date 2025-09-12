@@ -7,6 +7,12 @@ export { BasePlatformPublisher } from './base';
 export type { LoginCredentials, PublishResult } from './base';
 
 // 各平台发布器
+import { CSDNPublisher } from './csdn';
+import { JuejinPublisher } from './juejin';
+import { HuaweiPublisher } from './huawei';
+import { WechatPublisher } from './wechat';
+import { BasePlatformPublisher } from './base';
+
 export { CSDNPublisher } from './csdn';
 export type { CSDNCredentials } from './csdn';
 

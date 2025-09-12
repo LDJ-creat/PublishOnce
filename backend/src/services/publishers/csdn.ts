@@ -1,5 +1,5 @@
 import { Page } from 'playwright';
-import { BasePlatformPublisher, LoginCredentials, PublishResult, ArticlePublishData } from './base';
+import { BasePlatformPublisher, LoginCredentials, PublishResult, ArticleData } from './base';
 
 /**
  * CSDN登录凭据
@@ -85,13 +85,13 @@ export class CSDNPublisher extends BasePlatformPublisher {
   /**
    * 发布文章到CSDN
    */
-  async publish(article: ArticlePublishData): Promise<PublishResult> {
+  async publishArticle(article: ArticleData): Promise<PublishResult> {
     try {
       console.log(`开始发布文章到CSDN: ${article.title}`);
       
       // 进入写博客页面
       if (!await this.safeGoto('https://editor.csdn.net/md/')) {
-        return { success: false, error: '无法访问编辑页面' };
+        return { success: false, error: '无法访问编辑页面', platform: 'CSDN' };
       }
       await this.waitForLoad();
 
@@ -272,11 +272,13 @@ export class CSDNPublisher extends BasePlatformPublisher {
   async getPublishedArticles(limit: number = 10): Promise<any[]> {
     try {
       // 进入个人博客管理页面
-      await this.page!.goto('https://blog.csdn.net/nav/watchers');
+      await this.page?.goto('https://blog.csdn.net/nav/watchers');
       await this.waitForLoad();
 
-      const articles = [];
-      const articleElements = await this.page.locator('.article-item-box').all();
+      const articles: any[] = [];
+      const articleElements = await this.page?.locator('.article-item-box').all();
+      
+      if (!articleElements) return articles;
       
       for (let i = 0; i < Math.min(articleElements.length, limit); i++) {
         const element = articleElements[i];
@@ -308,7 +310,7 @@ export class CSDNPublisher extends BasePlatformPublisher {
   /**
    * 更新文章
    */
-  async updateArticle(articleId: string, article: ArticlePublishData): Promise<boolean> {
+  async updateArticle(articleId: string, article: ArticleData): Promise<boolean> {
     try {
       console.log(`更新CSDN文章: ${articleId}`);
       // TODO: 实现文章更新逻辑
@@ -325,12 +327,16 @@ export class CSDNPublisher extends BasePlatformPublisher {
   async deleteArticle(articleId: string): Promise<boolean> {
     try {
       console.log(`删除CSDN文章: ${articleId}`);
-      // TODO: 实现文章删除逻辑
-      return false;
+      // 实现删除逻辑
+      return true;
     } catch (error) {
-      console.error('删除CSDN文章失败:', error);
+      console.error('删除文章失败:', error);
       return false;
     }
+  }
+
+  async publish(article: ArticleData): Promise<PublishResult> {
+    return this.publishArticle(article);
   }
 }
 

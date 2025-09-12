@@ -1,4 +1,4 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, { Document, Schema, Model } from 'mongoose';
 
 /**
  * 平台凭据接口
@@ -19,6 +19,17 @@ export interface IPlatformCredential extends Document {
   lastUsed?: Date;
   createdAt: Date;
   updatedAt: Date;
+  
+  // 实例方法
+  validateCredentials(): boolean;
+}
+
+/**
+ * 平台凭据模型接口
+ */
+export interface IPlatformCredentialModel extends Model<IPlatformCredential> {
+  getUserCredentials(userId: string, platforms?: string[]): Promise<IPlatformCredential[]>;
+  updateLastUsed(userId: string, platform: string): Promise<void>;
 }
 
 /**
@@ -127,7 +138,7 @@ PlatformCredentialSchema.statics.updateLastUsed = async function(
   );
 };
 
-export const PlatformCredential = mongoose.model<IPlatformCredential>(
+export const PlatformCredential = mongoose.model<IPlatformCredential, IPlatformCredentialModel>(
   'PlatformCredential',
   PlatformCredentialSchema
 );

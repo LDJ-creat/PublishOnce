@@ -1,7 +1,14 @@
-// 统一导出所有数据模型
-export { User, default as UserModel } from './User';
+// 统一导出数据模型
+import { User, IUserDocument, IUserModel } from './User';
+import { Article } from './Article';
+import { Platform } from './Platform';
+import { PlatformCredential } from './PlatformCredential';
+import { Stats } from './Stats';
+
+export { User, IUserDocument, IUserModel, default as UserModel } from './User';
 export { Article, default as ArticleModel } from './Article';
 export { Platform, default as PlatformModel } from './Platform';
+export { PlatformCredential, default as PlatformCredentialModel } from './PlatformCredential';
 export { Stats, default as StatsModel } from './Stats';
 
 // 导出模型类型
@@ -32,5 +39,6 @@ export const allModels = {
   User,
   Article,
   Platform,
+  PlatformCredential,
   Stats
 };

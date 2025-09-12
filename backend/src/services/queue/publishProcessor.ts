@@ -7,7 +7,7 @@ import { JuejinPublisher } from '../publishers/juejin';
 import { HuaweiPublisher } from '../publishers/huawei';
 import { WechatPublisher } from '../publishers/wechat';
 import { BasePlatformPublisher, LoginCredentials, ArticleData } from '../publishers/base';
-import { PlatformType } from '../../types';
+import { PlatformType, IArticle } from '../../types';
 
 /**
  * 发布任务数据接口
@@ -53,14 +53,14 @@ function getPlatformPublisher(platformName: string): BasePlatformPublisher | nul
 /**
  * 转换文章数据为发布数据格式
  */
-function convertArticleToPublishData(article: any): ArticleData {
+function convertArticleToPublishData(article: IArticle): ArticleData {
   return {
     title: article.title,
     content: article.content,
-    summary: article.summary,
+    summary: article.summary || '',
     tags: article.tags || [],
-    category: article.category,
-    coverImage: article.coverImage,
+    category: article.category || '',
+    coverImage: article.coverImage || '',
     isDraft: false,
   };
 }
@@ -125,8 +125,13 @@ export async function processPublishJob(job: Job<PublishJobData>): Promise<Publi
 
         // 更新文章中的平台信息
         if (publishResult.success) {
+          // 确保 publishedPlatforms 数组存在
+          if (!article.publishedPlatforms) {
+            article.publishedPlatforms = [];
+          }
+          
           const platformIndex = article.publishedPlatforms.findIndex(
-            (p: any) => p.platform === platformName
+            (p) => p.platform === platformName as PlatformType
           );
 
           if (platformIndex >= 0) {
@@ -152,8 +157,13 @@ export async function processPublishJob(job: Job<PublishJobData>): Promise<Publi
             console.error('发送成功通知失败:', notifyError);
           }
         } else {
+          // 确保 publishedPlatforms 数组存在
+          if (!article.publishedPlatforms) {
+            article.publishedPlatforms = [];
+          }
+          
           const platformIndex = article.publishedPlatforms.findIndex(
-            (p: any) => p.platform === platformName
+            (p) => p.platform === platformName as PlatformType
           );
           if (platformIndex >= 0) {
             article.publishedPlatforms[platformIndex].status = 'failed';

@@ -1,8 +1,9 @@
 import { Request, Response } from 'express';
 import { Platform } from '../models/Platform';
-import { User } from '../models/User';
+import { User, IUserDocument } from '../models/User';
 import { validationResult } from 'express-validator';
 import mongoose from 'mongoose';
+import { IUserPlatformConfig } from '../types';
 
 /**
  * 获取所有可用平台
@@ -315,26 +316,30 @@ export const testPlatformConnection = async (req: Request, res: Response): Promi
 
     if (testResult.success) {
       // 更新用户的平台配置
-      const user = await User.findById(userId);
+      const user = await User.findById(userId) as IUserDocument | null;
       if (user) {
+        // 确保 platformConfigs 数组存在
+        if (!user.platformConfigs) {
+          user.platformConfigs = [];
+        }
+
         const platformIndex = user.platformConfigs.findIndex(
-          (pc: any) => pc.platform === platform.name
+          (pc: IUserPlatformConfig) => pc.platform === platform.name
         );
 
-        const configData = {
-          platform: platform.name as any,
+        const configData: IUserPlatformConfig = {
+          platform: platform.name as 'csdn' | 'juejin' | 'huawei' | 'hexo',
           isEnabled: true,
           isActive: true,
           credentials,
-          lastTestAt: new Date(),
-          updatedAt: new Date()
+          lastLoginAt: new Date()
         };
 
         if (platformIndex >= 0) {
           user.platformConfigs[platformIndex] = {
             ...user.platformConfigs[platformIndex],
             ...configData
-          };
+          } as IUserPlatformConfig;
         } else {
           user.platformConfigs.push(configData);
         }

@@ -1,5 +1,5 @@
 import { Page } from 'playwright';
-import { BasePlatformPublisher, LoginCredentials, PublishResult, ArticlePublishData } from './base';
+import { BasePlatformPublisher, LoginCredentials, PublishResult, ArticleData } from './base';
 
 /**
  * 掘金登录凭据
@@ -50,13 +50,13 @@ export class JuejinPublisher extends BasePlatformPublisher {
       }
 
       // 检查是否需要扫码
-      const qrcode = await this.page.locator('.qrcode-img').isVisible();
+      const qrcode = await this.page?.locator('.qrcode-img').isVisible();
       if (qrcode) {
         console.log('请扫描二维码登录掘金');
         await this.saveScreenshot('juejin-qrcode.png');
         
         // 等待扫码完成
-        await this.page!.waitForURL('**/juejin.cn/**', { timeout: 120000 });
+        await this.page?.waitForURL('**/juejin.cn/**', { timeout: 120000 });
       }
 
       // 验证登录成功
@@ -75,13 +75,13 @@ export class JuejinPublisher extends BasePlatformPublisher {
   /**
    * 发布文章到掘金
    */
-  async publish(article: ArticlePublishData): Promise<PublishResult> {
+  async publishArticle(article: ArticleData): Promise<PublishResult> {
     try {
       console.log(`开始发布文章到掘金: ${article.title}`);
       
       // 进入创作者中心
       if (!await this.safeGoto('https://juejin.cn/editor/drafts/new?v=2')) {
-        return { success: false, error: '无法访问编辑页面' };
+        return { success: false, error: '无法访问编辑页面', platform: '掘金' };
       }
       await this.waitForLoad();
 
@@ -323,7 +323,7 @@ export class JuejinPublisher extends BasePlatformPublisher {
   /**
    * 更新文章
    */
-  async updateArticle(articleId: string, article: ArticlePublishData): Promise<boolean> {
+  async updateArticle(articleId: string, article: ArticleData): Promise<boolean> {
     try {
       console.log(`更新掘金文章: ${articleId}`);
       // TODO: 实现文章更新逻辑
@@ -346,6 +346,10 @@ export class JuejinPublisher extends BasePlatformPublisher {
       console.error('删除掘金文章失败:', error);
       return false;
     }
+  }
+
+  async publish(article: ArticleData): Promise<PublishResult> {
+    return this.publishArticle(article);
   }
 
   /**
