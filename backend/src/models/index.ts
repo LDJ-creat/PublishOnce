@@ -1,20 +1,18 @@
 // 统一导出所有数据模型
-export { default as User, User as UserModel } from './User';
-export { default as Article, Article as ArticleModel } from './Article';
-export { default as Platform, Platform as PlatformModel } from './Platform';
-export { default as Stats, Stats as StatsModel } from './Stats';
+export { User, default as UserModel } from './User';
+export { Article, default as ArticleModel } from './Article';
+export { Platform, default as PlatformModel } from './Platform';
+export { Stats, default as StatsModel } from './Stats';
 
 // 导出模型类型
 export type {
   IUser,
   IArticle,
   IPlatform,
-  IStats,
-  UserPlatformConfig,
+  IUserPlatformConfig,
   PlatformInfo,
   PlatformConfig,
-  ArticleStats,
-  CommentData
+  IArticleStats
 } from '../types';
 
 // 模型初始化函数
@@ -29,16 +27,10 @@ export const initializeModels = async () => {
   }
 };
 
-// 导入模型用于allModels对象
-import UserModel from './User';
-import ArticleModel from './Article';
-import PlatformModel from './Platform';
-import StatsModel from './Stats';
-
 // 导出所有模型的数组，方便批量操作
 export const allModels = {
-  User: UserModel,
-  Article: ArticleModel,
-  Platform: PlatformModel,
-  Stats: StatsModel
+  User,
+  Article,
+  Platform,
+  Stats
 };

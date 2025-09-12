@@ -1,9 +1,9 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
-import { IUser, UserPlatformConfig } from '../types';
+import { IUser, IUserPlatformConfig } from '../types';
 
 // 用户平台配置子文档
-const userPlatformConfigSchema = new Schema<UserPlatformConfig>({
+const userPlatformConfigSchema = new Schema<IUserPlatformConfig>({
   platform: {
     type: String,
     required: true,
@@ -51,8 +51,7 @@ const userSchema = new Schema<IUser>({
   password: {
     type: String,
     required: true,
-    minlength: 6,
-    select: false
+    minlength: 6
   },
   avatar: {
     type: String,
@@ -95,9 +94,7 @@ const userSchema = new Schema<IUser>({
   timestamps: true,
   toJSON: {
     transform: function(doc, ret) {
-      if (ret.password) {
-        delete (ret as any).password;
-      }
+      delete ret.password;
       return ret;
     }
   }
@@ -122,17 +119,17 @@ userSchema.methods.comparePassword = async function(candidatePassword: string): 
 };
 
 // 实例方法：获取平台配置
-userSchema.methods.getPlatformConfig = function(platform: string): UserPlatformConfig | undefined {
-  return this.platformConfigs.find((config: UserPlatformConfig) => config.platform === platform);
+userSchema.methods.getPlatformConfig = function(platform: string): IUserPlatformConfig | undefined {
+  return this.platformConfigs.find((config: IUserPlatformConfig) => config.platform === platform);
 };
 
-// 实例方法：更新平台配置
-userSchema.methods.updatePlatformConfig = function(platform: string, config: Partial<UserPlatformConfig>): void {
+// 更新平台配置
+userSchema.methods.updatePlatformConfig = function(platform: string, config: Partial<IUserPlatformConfig>): void {
   const existingConfig = this.getPlatformConfig(platform);
   if (existingConfig) {
     Object.assign(existingConfig, config);
   } else {
-    this.platformConfigs.push({ platform, ...config } as UserPlatformConfig);
+    this.platformConfigs.push({ platform, ...config } as IUserPlatformConfig);
   }
 };
 

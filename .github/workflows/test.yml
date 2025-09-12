@@ -1,0 +1,382 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # 每天凌晨2点运行
+    - cron: '0 2 * * *'
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [16.x, 18.x, 20.x]
+        mongodb-version: ['5.0', '6.0']
+    
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      mongodb:
+        image: mongo:${{ matrix.mongodb-version }}
+        ports:
+          - 27017:27017
+        env:
+          MONGO_INITDB_ROOT_USERNAME: test
+          MONGO_INITDB_ROOT_PASSWORD: test
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand(\"ping\")'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: backend/package-lock.json
+    
+    - name: Install dependencies
+      working-directory: ./backend
+      run: |
+        npm ci
+        npm audit --audit-level=high
+    
+    - name: Setup test environment
+      working-directory: ./backend
+      run: |
+        cp .env.example .env.test
+        mkdir -p test-reports coverage
+    
+    - name: Wait for services
+      run: |
+        sleep 10
+        # 验证Redis连接
+        redis-cli -h localhost -p 6379 ping
+        # 验证MongoDB连接
+        mongosh --host localhost:27017 --username test --password test --eval "db.adminCommand('ping')"
+    
+    - name: Run linting
+      working-directory: ./backend
+      run: |
+        npm run lint
+        npm run lint:fix
+    
+    - name: Run type checking
+      working-directory: ./backend
+      run: npm run type-check
+    
+    - name: Run unit tests
+      working-directory: ./backend
+      run: |
+        node scripts/test.js --type unit --coverage --ci
+      env:
+        NODE_ENV: test
+        CI: true
+        MONGODB_URI: mongodb://test:test@localhost:27017/publishonce_test?authSource=admin
+        REDIS_URL: redis://localhost:6379
+    
+    - name: Run integration tests
+      working-directory: ./backend
+      run: |
+        node scripts/test.js --type integration --coverage --ci
+      env:
+        NODE_ENV: test
+        CI: true
+        MONGODB_URI: mongodb://test:test@localhost:27017/publishonce_test?authSource=admin
+        REDIS_URL: redis://localhost:6379
+    
+    - name: Run e2e tests
+      working-directory: ./backend
+      run: |
+        node scripts/test.js --type e2e --ci
+      env:
+        NODE_ENV: test
+        CI: true
+        MONGODB_URI: mongodb://test:test@localhost:27017/publishonce_test?authSource=admin
+        REDIS_URL: redis://localhost:6379
+    
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results-${{ matrix.node-version }}-${{ matrix.mongodb-version }}
+        path: |
+          backend/test-reports/
+          backend/coverage/
+        retention-days: 30
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      if: matrix.node-version == '18.x' && matrix.mongodb-version == '6.0'
+      with:
+        file: ./backend/coverage/lcov.info
+        directory: ./backend/coverage/
+        flags: backend
+        name: backend-coverage
+        fail_ci_if_error: false
+    
+    - name: Comment PR with test results
+      uses: actions/github-script@v7
+      if: github.event_name == 'pull_request' && always()
+      with:
+        script: |
+          const fs = require('fs');
+          const path = './backend/test-reports/summary.json';
+          
+          if (fs.existsSync(path)) {
+            const summary = JSON.parse(fs.readFileSync(path, 'utf8'));
+            const comment = `
+            ## 🧪 测试结果摘要
+            
+            **Node.js版本**: ${{ matrix.node-version }}
+            **MongoDB版本**: ${{ matrix.mongodb-version }}
+            **测试时间**: ${summary.timestamp}
+            
+            ### 📊 报告文件
+            ${summary.reports.map(r => `- ${r.type}: ${r.exists ? '✅' : '❌'} ${r.file}`).join('\n')}
+            
+            详细报告请查看 Actions 构建日志。
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+          }
+
+  security:
+    name: Security Tests
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18.x'
+        cache: 'npm'
+        cache-dependency-path: backend/package-lock.json
+    
+    - name: Install dependencies
+      working-directory: ./backend
+      run: npm ci
+    
+    - name: Run security audit
+      working-directory: ./backend
+      run: |
+        npm audit --audit-level=moderate
+        npx audit-ci --moderate
+    
+    - name: Run security tests
+      working-directory: ./backend
+      run: node scripts/test.js --type security --ci
+      env:
+        NODE_ENV: test
+        CI: true
+    
+    - name: SAST with CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: javascript
+    
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+
+  performance:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+      mongodb:
+        image: mongo:6.0
+        ports:
+          - 27017:27017
+        env:
+          MONGO_INITDB_ROOT_USERNAME: test
+          MONGO_INITDB_ROOT_PASSWORD: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18.x'
+        cache: 'npm'
+        cache-dependency-path: backend/package-lock.json
+    
+    - name: Install dependencies
+      working-directory: ./backend
+      run: npm ci
+    
+    - name: Run performance tests
+      working-directory: ./backend
+      run: node scripts/test.js --type performance --ci
+      env:
+        NODE_ENV: test
+        CI: true
+        MONGODB_URI: mongodb://test:test@localhost:27017/publishonce_test?authSource=admin
+        REDIS_URL: redis://localhost:6379
+    
+    - name: Upload performance results
+      uses: actions/upload-artifact@v4
+      with:
+        name: performance-results
+        path: backend/test-reports/performance/
+        retention-days: 90
+
+  build:
+    name: Build Application
+    runs-on: ubuntu-latest
+    needs: [test, security]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18.x'
+        cache: 'npm'
+        cache-dependency-path: backend/package-lock.json
+    
+    - name: Install dependencies
+      working-directory: ./backend
+      run: npm ci
+    
+    - name: Build application
+      working-directory: ./backend
+      run: |
+        npm run build
+        npm run build:check
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-artifacts
+        path: |
+          backend/dist/
+          backend/package.json
+          backend/package-lock.json
+        retention-days: 7
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    environment:
+      name: staging
+      url: https://staging.publishonce.com
+    
+    steps:
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: build-artifacts
+        path: ./build
+    
+    - name: Deploy to staging
+      run: |
+        echo "Deploying to staging environment..."
+        # 这里添加实际的部署脚本
+        # 例如: rsync, docker push, kubectl apply 等
+    
+    - name: Run smoke tests
+      run: |
+        echo "Running smoke tests on staging..."
+        # 添加冒烟测试脚本
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: production
+      url: https://publishonce.com
+    
+    steps:
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: build-artifacts
+        path: ./build
+    
+    - name: Deploy to production
+      run: |
+        echo "Deploying to production environment..."
+        # 这里添加实际的部署脚本
+    
+    - name: Run smoke tests
+      run: |
+        echo "Running smoke tests on production..."
+        # 添加冒烟测试脚本
+    
+    - name: Notify deployment
+      if: always()
+      run: |
+        echo "Sending deployment notification..."
+        # 添加通知脚本（Slack, 邮件等）
+
+  cleanup:
+    name: Cleanup
+    runs-on: ubuntu-latest
+    needs: [test, security, performance, build]
+    if: always()
+    
+    steps:
+    - name: Clean up old artifacts
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            run_id: context.runId,
+          });
+          
+          // 保留最近的10个构建的artifacts
+          const oldArtifacts = artifacts.data.artifacts
+            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+            .slice(10);
+          
+          for (const artifact of oldArtifacts) {
+            await github.rest.actions.deleteArtifact({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              artifact_id: artifact.id,
+            });
+          }

@@ -1,86 +1,56 @@
-import { Document } from 'mongoose';
 import mongoose from 'mongoose';
-
-
-
-/**
- * 用户平台配置
- */
-export interface UserPlatformConfig {
-  platform: PlatformType;
-  isEnabled: boolean;
-  credentials: {
-    username?: string;
-    password?: string;
-    token?: string;
-    cookies?: string;
-    apiKey?: string;
-    customConfig?: any;
-  };
-  lastLoginAt?: Date;
-  isActive: boolean;
-}
 
 /**
  * 用户相关类型定义
  */
-export interface IUser extends Document {
+export interface IUser {
   _id: string;
   id: string;
   username: string;
   email: string;
-  password: string;
+  password?: string;
   avatar?: string;
   bio?: string;
   role: string;
   isActive: boolean;
-  platformConfigs: UserPlatformConfig[];
-  preferences?: {
-    defaultCategory?: string;
-    defaultTags?: string[];
-    autoPublish?: boolean;
-    notificationEnabled?: boolean;
-  };
+  platformConfigs?: any[];
+  preferences?: any;
   lastLoginAt?: Date;
   createdAt: Date;
   updatedAt: Date;
   // 实例方法
   comparePassword(candidatePassword: string): Promise<boolean>;
-  getPlatformConfig(platform: string): UserPlatformConfig | undefined;
-  updatePlatformConfig(platform: string, config: Partial<UserPlatformConfig>): void;
+  getPlatformConfig?(platform: string): any;
+  updatePlatformConfig?(platform: string, config: any): void;
 }
 
 /**
  * 文章相关类型定义
  */
-export interface IArticle extends Document {
+export interface IArticle {
   _id: string;
   title: string;
   content: string;
   summary?: string;
   tags: string[];
-  category: string;
+  category?: string;
   coverImage?: string;
-  author: mongoose.Types.ObjectId; // 用户ID
-  status: 'draft' | 'published' | 'archived' | 'deleted';
-  visibility: 'public' | 'private' | 'unlisted';
+  author: string | any; // 用户ID，可以是ObjectId或string
+  status: 'draft' | 'published' | 'archived' | 'deleted' | 'partial_published';
+  visibility?: 'public' | 'private' | 'unlisted';
   platforms: PlatformInfo[];
-  publishSettings: {
-    autoPublish: boolean;
+  publishedPlatforms?: IPlatformPublishStatus[];
+  publishSettings?: {
+    autoPublish?: boolean;
     scheduledAt?: Date;
-    selectedPlatforms: PlatformType[];
-    customSettings: {
-      csdn?: any;
-      juejin?: any;
-      huawei?: any;
-      hexo?: any;
-    };
+    selectedPlatforms?: PlatformType[];
+    customSettings?: any;
   };
-  statistics: {
-    totalViews: number;
-    totalLikes: number;
-    totalComments: number;
-    totalShares: number;
+  statistics?: {
+    totalViews?: number;
+    totalLikes?: number;
+    totalComments?: number;
+    totalShares?: number;
     lastUpdatedAt?: Date;
   };
   seo?: {
@@ -88,17 +58,13 @@ export interface IArticle extends Document {
     metaDescription?: string;
     keywords?: string[];
   };
-  version: number;
+  version?: number;
   originalContent?: string;
-  wordCount: number;
-  readingTime: number;
-  publishedPlatforms: IPlatformPublishStatus[];
+  wordCount?: number;
+  readingTime?: number;
+  publishedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
-  // 实例方法
-  getPlatformInfo(platform: string): PlatformInfo | undefined;
-  updatePlatformStatus(platform: string, status: string, data?: Partial<PlatformInfo>): void;
-  updateStatistics(): void;
 }
 
 /**
@@ -114,6 +80,11 @@ export interface IPlatformPublishStatus {
 }
 
 /**
+ * 支持的平台类型
+ */
+export type PlatformType = 'csdn' | 'juejin' | 'huawei' | 'hexo';
+
+/**
  * 平台信息接口
  */
 export interface PlatformInfo {
@@ -122,51 +93,88 @@ export interface PlatformInfo {
   url?: string;
   publishedAt?: Date;
   status: 'pending' | 'publishing' | 'published' | 'failed' | 'updated';
+  error?: string;
   errorMessage?: string;
-  retryCount: number;
+  retryCount?: number;
   lastAttemptAt?: Date;
-  metadata: {
-    views: number;
-    likes: number;
-    comments: number;
-    shares: number;
+  metadata?: {
+    views?: number;
+    likes?: number;
+    comments?: number;
+    shares?: number;
     lastScrapedAt?: Date;
   };
 }
 
 /**
- * 支持的平台类型
- */
-export type PlatformType = 'csdn' | 'juejin' | 'huawei' | 'hexo';
-
-/**
  * 平台配置
  */
 export interface IPlatformConfig {
-  name: string;
-  displayName: string;
-  description?: string;
-  icon?: string;
-  color?: string;
-  isEnabled?: boolean;
   platform: PlatformType;
   enabled: boolean;
   credentials: {
     username?: string;
     password?: string;
-    apiKey?: string;
     token?: string;
     [key: string]: any;
   };
   settings: {
     autoPublish: boolean;
-    publishDelay: number;
-    maxRetries: number;
     defaultCategory?: string;
     defaultTags?: string[];
     [key: string]: any;
   };
-  supportedFeatures?: {
+}
+
+/**
+ * 平台主配置接口
+ */
+export interface IPlatform {
+  _id: string;
+  name: string;
+  displayName: string;
+  description?: string;
+  icon?: string;
+  color?: string;
+  apiEndpoint?: string;
+  authType: 'username_password' | 'token' | 'oauth' | 'api_key' | 'cookies';
+  supportedFeatures: string[];
+  config: PlatformConfig;
+  status: 'active' | 'inactive' | 'maintenance';
+  version?: string;
+  lastUpdated?: Date;
+  statistics?: {
+    totalUsers?: number;
+    activeUsers?: number;
+    totalPublishes?: number;
+    successfulPublishes?: number;
+    failedPublishes?: number;
+    successRate?: number;
+    lastStatsUpdate?: Date;
+  };
+  maintenance?: {
+    isScheduled?: boolean;
+    startTime?: Date;
+    endTime?: Date;
+    reason?: string;
+    message?: string;
+  };
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * 平台详细配置接口
+ */
+export interface PlatformConfig {
+  name: string;
+  displayName: string;
+  description?: string;
+  icon?: string;
+  color?: string;
+  isEnabled: boolean;
+  supportedFeatures: {
     autoPublish?: boolean;
     scheduling?: boolean;
     categories?: boolean;
@@ -176,13 +184,13 @@ export interface IPlatformConfig {
     update?: boolean;
     delete?: boolean;
   };
-  authConfig?: {
+  authConfig: {
     type: 'username_password' | 'token' | 'oauth' | 'api_key' | 'cookies';
     fields?: Array<{
-      name?: string;
-      label?: string;
-      type?: 'text' | 'password' | 'email' | 'url' | 'textarea';
-      required?: boolean;
+      name: string;
+      label: string;
+      type: 'text' | 'password' | 'email' | 'url' | 'textarea';
+      required: boolean;
       placeholder?: string;
       description?: string;
     }>;
@@ -231,7 +239,7 @@ export interface IPlatformConfig {
   };
   webhookConfig?: {
     enabled?: boolean;
-    events?: Array<'publish' | 'update' | 'delete' | 'comment' | 'like'>;
+    events?: string[];
     endpoint?: string;
     secret?: string;
   };
@@ -253,30 +261,13 @@ export interface IUserPlatformConfig {
  */
 export interface IArticleStats {
   _id: string;
-  articleId: mongoose.Types.ObjectId;
+  articleId: string;
   platform: PlatformType;
-  platformArticleId?: string;
-  url?: string;
   views: number;
   likes: number;
   comments: number;
   shares: number;
-  collects: number;
   collectedAt: Date;
-  previousStats?: {
-    views: number;
-    likes: number;
-    comments: number;
-    shares: number;
-    collects: number;
-  };
-  growth?: {
-    views: number;
-    likes: number;
-    comments: number;
-    shares: number;
-    collects: number;
-  };
 }
 
 /**
@@ -348,37 +339,59 @@ export interface PaginatedResponse<T> {
 }
 
 /**
- * 文章数据接口 - 用于发布器
+ * 统计数据接口
  */
-export interface ArticleData {
-  title: string;
-  content: string;
-  summary?: string;
-  tags: string[];
-  category?: string;
-  coverImage?: string;
-  isDraft?: boolean;
-  isOriginal?: boolean;
-  publishImmediately?: boolean;
-}
-
-// 统计数据接口
 export interface IStats {
-  userId: mongoose.Types.ObjectId;
+  _id: string;
+  userId: string | mongoose.Types.ObjectId;
   type: 'article' | 'user' | 'platform' | 'system';
   date: Date;
   period: 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly';
-  articleStats?: IArticleStats[];
+  articleStats?: ArticleStats[];
   userStats?: any;
   platformStats?: any;
   systemStats?: any;
-  comments?: IComment[];
+  comments?: CommentData[];
   trends?: any;
   metadata?: any;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-// 添加缺失的类型别名和导出
-export type CommentData = {
+/**
+ * 文章统计数据
+ */
+export interface ArticleStats {
+  articleId: string | mongoose.Types.ObjectId;
+  platform: PlatformType;
+  platformArticleId?: string;
+  url?: string;
+  views: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  collects?: number;
+  collectedAt: Date;
+  previousStats?: {
+    views?: number;
+    likes?: number;
+    comments?: number;
+    shares?: number;
+    collects?: number;
+  };
+  growth?: {
+    views: number;
+    likes: number;
+    comments: number;
+    shares: number;
+    collects: number;
+  };
+}
+
+/**
+ * 评论数据
+ */
+export interface CommentData {
   id: string;
   author: {
     name?: string;
@@ -391,38 +404,7 @@ export type CommentData = {
   replies: number;
   platform: PlatformType;
   url?: string;
-  isReplied?: boolean;
+  isReplied: boolean;
   replyContent?: string;
   repliedAt?: Date;
-  collectedAt: Date;
-};
-export interface IPlatform extends Document {
-  _id: string;
-  name: string;
-  config: PlatformConfig;
-  status: 'active' | 'inactive' | 'maintenance' | 'deprecated';
-  version: string;
-  lastUpdated: Date;
-  statistics: {
-    totalUsers: number;
-    totalArticles: number;
-    successRate: number;
-    avgResponseTime: number;
-    lastStatsUpdate?: Date;
-  };
-  maintenance: {
-    isScheduled: boolean;
-    startTime?: Date;
-    endTime?: Date;
-    reason?: string;
-    message?: string;
-  };
-  createdAt: Date;
-  updatedAt: Date;
-  // 实例方法
-  isAvailable(): boolean;
-  validatePublishData(data: any): { valid: boolean; errors: string[] };
-  updateStatistics(stats: any): void;
 }
-export type PlatformConfig = IPlatformConfig;
-export type ArticleStats = IArticleStats;

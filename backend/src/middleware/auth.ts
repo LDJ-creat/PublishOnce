@@ -21,14 +21,20 @@ const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '30d';
 
 // JWT工具函数
 export const generateToken = (userId: string): string => {
-  return (jwt.sign as any)({ userId }, JWT_SECRET, {
-    expiresIn: JWT_EXPIRES_IN
+  if (!JWT_SECRET) {
+    throw new Error('JWT_SECRET is not defined');
+  }
+  return jwt.sign({ userId }, JWT_SECRET, {
+    expiresIn: JWT_EXPIRES_IN as string
   });
 };
 
 export const generateRefreshToken = (userId: string): string => {
-  return (jwt.sign as any)({ userId, type: 'refresh' }, JWT_SECRET, {
-    expiresIn: JWT_REFRESH_EXPIRES_IN
+  if (!JWT_SECRET) {
+    throw new Error('JWT_SECRET is not defined');
+  }
+  return jwt.sign({ userId, type: 'refresh' }, JWT_SECRET, {
+    expiresIn: JWT_REFRESH_EXPIRES_IN as string
   });
 };
 
@@ -216,6 +222,12 @@ export const rateLimit = (maxRequests: number = 100, windowMs: number = 15 * 60 
   };
 };
 
+// 为了向后兼容，导出authenticate的别名
+export const authenticateToken = authenticate;
+
+// 为了向后兼容，导出refreshTokenAuth的别名
+export const verifyRefreshToken = refreshTokenAuth;
+
 // 清理过期的速率限制记录
 setInterval(() => {
   const now = Date.now();
@@ -227,9 +239,6 @@ setInterval(() => {
 }, 5 * 60 * 1000); // 每5分钟清理一次
 
 // 导出认证相关的工具函数
-// 导出别名以保持向后兼容
-export const verifyRefreshToken = refreshTokenAuth;
-
 export const authUtils = {
   generateToken,
   generateRefreshToken,

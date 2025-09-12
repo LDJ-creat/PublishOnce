@@ -1,5 +1,5 @@
 import { Page } from 'playwright';
-import { BasePlatformPublisher, LoginCredentials, PublishResult, ArticleData } from './base';
+import { BasePlatformPublisher, LoginCredentials, PublishResult, ArticlePublishData } from './base';
 
 /**
  * CSDN登录凭据
@@ -13,8 +13,6 @@ export interface CSDNCredentials extends LoginCredentials {
  * CSDN发布器
  */
 export class CSDNPublisher extends BasePlatformPublisher {
-  protected platformName = 'CSDN';
-  protected baseUrl = 'https://blog.csdn.net';
 
   /**
    * 登录CSDN
@@ -23,11 +21,9 @@ export class CSDNPublisher extends BasePlatformPublisher {
     try {
       console.log('开始登录CSDN...');
       
-      if (!this.page) {
-        throw new Error('浏览器页面未初始化');
+      if (!await this.safeGoto('https://passport.csdn.net/login')) {
+        return false;
       }
-
-      await this.page.goto('https://passport.csdn.net/login');
       await this.waitForLoad();
 
       // 切换到密码登录
@@ -48,19 +44,21 @@ export class CSDNPublisher extends BasePlatformPublisher {
 
       // 处理验证码（如果有）
       try {
-        const captchaImg = await this.page.waitForSelector('#imgCode', { timeout: 3000 });
-        if (captchaImg) {
-          console.log('检测到验证码，需要手动输入');
-          await this.saveScreenshot('csdn-captcha.png');
-          
-          // 等待用户手动输入验证码
-          await this.page.waitForFunction(
-            () => {
-              const input = document.querySelector('#validCode') as HTMLInputElement;
-              return input && input.value.length > 0;
-            },
-            { timeout: 60000 }
-          );
+        if (this.page) {
+          const captchaImg = await this.page.waitForSelector('#imgCode', { timeout: 3000 });
+          if (captchaImg) {
+            console.log('检测到验证码，需要手动输入');
+            await this.saveScreenshot('csdn-captcha.png');
+            
+            // 等待用户手动输入验证码
+            await this.page!.waitForFunction(
+              () => {
+                const input = (document as any).querySelector('#validCode') as any;
+                return input && input.value && input.value.length > 0;
+              },
+              { timeout: 60000 }
+            );
+          }
         }
       } catch (error) {
         // 没有验证码，继续
@@ -70,7 +68,9 @@ export class CSDNPublisher extends BasePlatformPublisher {
       await this.safeClick('.logging');
       
       // 等待登录成功
-      await this.page.waitForURL('**/blog.csdn.net/**', { timeout: 30000 });
+      if (this.page) {
+        await this.page.waitForURL('**/blog.csdn.net/**', { timeout: 30000 });
+      }
       
       console.log('CSDN登录成功');
       return true;
@@ -85,20 +85,20 @@ export class CSDNPublisher extends BasePlatformPublisher {
   /**
    * 发布文章到CSDN
    */
-  async publishArticle(article: ArticleData): Promise<PublishResult> {
+  async publish(article: ArticlePublishData): Promise<PublishResult> {
     try {
       console.log(`开始发布文章到CSDN: ${article.title}`);
       
-      if (!this.page) {
-        throw new Error('浏览器页面未初始化');
-      }
-
       // 进入写博客页面
-      await this.page.goto('https://editor.csdn.net/md/');
+      if (!await this.safeGoto('https://editor.csdn.net/md/')) {
+        return { success: false, error: '无法访问编辑页面' };
+      }
       await this.waitForLoad();
 
       // 等待编辑器加载完成
-      await this.page.waitForSelector('.editor-title-input', { timeout: 10000 });
+        if (this.page) {
+          await this.page.waitForSelector('.editor-title-input', { timeout: 10000 });
+        }
       await this.wait(2000);
 
       // 填写标题
@@ -112,13 +112,15 @@ export class CSDNPublisher extends BasePlatformPublisher {
         await this.wait(1000);
         
         // 清空编辑器
-        await this.page.keyboard.press('Control+A');
-        await this.page.keyboard.press('Delete');
-        await this.wait(500);
-        
-        // 输入内容
-        await this.page.keyboard.type(article.content);
-        await this.wait(2000);
+          if (this.page) {
+            await this.page?.keyboard.press('Control+A');
+        await this.page?.keyboard.press('Delete');
+            await this.wait(500);
+            
+            // 输入内容
+            await this.page?.keyboard.type(article.content);
+            await this.wait(2000);
+          }
       }
 
       // 点击发布按钮
@@ -126,10 +128,12 @@ export class CSDNPublisher extends BasePlatformPublisher {
       await this.wait(2000);
 
       // 等待发布设置弹窗
-      await this.page.waitForSelector('.article-bar', { timeout: 10000 });
+        if (this.page) {
+          await this.page.waitForSelector('.article-bar', { timeout: 10000 });
+        }
 
       // 设置文章分类
-      if (article.category) {
+      if (article.category && this.page) {
         try {
           await this.safeClick('.select-item-category');
           await this.wait(1000);
@@ -152,10 +156,10 @@ export class CSDNPublisher extends BasePlatformPublisher {
       // 设置标签
       if (article.tags && article.tags.length > 0) {
         try {
-          const tagInput = await this.page.locator('.tag-input-new');
+          const tagInput = await this.page!.locator('.tag-input-new');
           for (const tag of article.tags.slice(0, 5)) { // CSDN最多5个标签
             await tagInput.fill(tag);
-            await this.page.keyboard.press('Enter');
+            await this.page!.keyboard.press('Enter');
             await this.wait(500);
           }
         } catch (error) {
@@ -194,7 +198,7 @@ export class CSDNPublisher extends BasePlatformPublisher {
       // 检查发布结果
       try {
         // 等待成功提示或跳转
-        await this.page.waitForFunction(
+        await this.page!.waitForFunction(
           () => {
             return document.querySelector('.success-tips') || 
                    window.location.href.includes('/article/details/');
@@ -204,14 +208,14 @@ export class CSDNPublisher extends BasePlatformPublisher {
         
         // 获取文章链接
         let articleUrl = '';
-        if (this.page.url().includes('/article/details/')) {
-          articleUrl = this.page.url();
+        if (this.page!.url().includes('/article/details/')) {
+        articleUrl = this.page!.url() || '';
         } else {
           // 尝试从成功提示中获取链接
           try {
-            const linkElement = await this.page.locator('.success-tips a').first();
+            const linkElement = await this.page!.locator('.success-tips a').first();
             if (await linkElement.isVisible()) {
-              articleUrl = await linkElement.getAttribute('href') || '';
+              articleUrl = (await linkElement.getAttribute('href')) || '';
             }
           } catch (error) {
             console.warn('获取文章链接失败:', error);
@@ -229,7 +233,7 @@ export class CSDNPublisher extends BasePlatformPublisher {
         
       } catch (error) {
         // 检查是否有错误提示
-        const errorMsg = await this.page.locator('.error-tips').textContent();
+        const errorMsg = await this.page!.locator('.error-tips').textContent();
         throw new Error(errorMsg || '发布超时或失败');
       }
       
@@ -250,15 +254,11 @@ export class CSDNPublisher extends BasePlatformPublisher {
    */
   async checkLoginStatus(): Promise<boolean> {
     try {
-      if (!this.page) {
-        throw new Error('浏览器页面未初始化');
-      }
-
-      await this.page.goto('https://blog.csdn.net');
+      await this.page!.goto('https://blog.csdn.net');
       await this.wait(3000);
       
       // 检查是否有登录用户信息
-      const userInfo = await this.page.locator('.toolbar-btn-login').isVisible();
+      const userInfo = await this.page!.locator('.toolbar-btn-login').isVisible();
       return !userInfo; // 如果没有登录按钮，说明已登录
     } catch (error) {
       console.error('检查CSDN登录状态失败:', error);
@@ -271,12 +271,8 @@ export class CSDNPublisher extends BasePlatformPublisher {
    */
   async getPublishedArticles(limit: number = 10): Promise<any[]> {
     try {
-      if (!this.page) {
-        throw new Error('浏览器页面未初始化');
-      }
-
       // 进入个人博客管理页面
-      await this.page.goto('https://blog.csdn.net/nav/watchers');
+      await this.page!.goto('https://blog.csdn.net/nav/watchers');
       await this.waitForLoad();
 
       const articles = [];
@@ -312,19 +308,29 @@ export class CSDNPublisher extends BasePlatformPublisher {
   /**
    * 更新文章
    */
-  async updateArticle(articleId: string, article: ArticleData): Promise<boolean> {
-    // CSDN暂不支持文章更新功能
-    console.warn('CSDN平台暂不支持文章更新功能');
-    return false;
+  async updateArticle(articleId: string, article: ArticlePublishData): Promise<boolean> {
+    try {
+      console.log(`更新CSDN文章: ${articleId}`);
+      // TODO: 实现文章更新逻辑
+      return false;
+    } catch (error) {
+      console.error('更新CSDN文章失败:', error);
+      return false;
+    }
   }
 
   /**
    * 删除文章
    */
   async deleteArticle(articleId: string): Promise<boolean> {
-    // CSDN暂不支持文章删除功能
-    console.warn('CSDN平台暂不支持文章删除功能');
-    return false;
+    try {
+      console.log(`删除CSDN文章: ${articleId}`);
+      // TODO: 实现文章删除逻辑
+      return false;
+    } catch (error) {
+      console.error('删除CSDN文章失败:', error);
+      return false;
+    }
   }
 }
 

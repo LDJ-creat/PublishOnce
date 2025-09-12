@@ -77,63 +77,63 @@ const defaultPlatforms = [
     },
     isActive: true
   },
-  {
-    name: 'github',
-    displayName: 'GitHub Pages',
-    description: 'GitHub Pages是GitHub提供的静态网站托管服务',
-    icon: 'https://github.githubassets.com/favicons/favicon-32x32.png',
-    apiEndpoint: 'https://api.github.com',
-    authType: 'token',
-    supportedFeatures: ['publish', 'draft', 'schedule', 'tags', 'categories', 'images'],
-    config: {
-      maxTitleLength: 200,
-      maxContentLength: 1000000,
-      supportedFormats: ['markdown'],
-      requiresCategory: false,
-      maxTags: 50,
-      supportsFrontMatter: true,
-      supportsAssets: true,
-      requiresRepo: true
-    },
-    isActive: true
-  },
-  {
-    name: 'wordpress',
-    displayName: 'WordPress',
-    description: 'WordPress是全球最受欢迎的内容管理系统和博客平台',
-    icon: 'https://s.w.org/favicon.ico',
-    apiEndpoint: '',
-    authType: 'username_password',
-    supportedFeatures: ['publish', 'draft', 'schedule', 'tags', 'categories', 'images'],
-    config: {
-      maxTitleLength: 200,
-      maxContentLength: 2000000,
-      supportedFormats: ['html', 'markdown'],
-      requiresCategory: false,
-      maxTags: 100,
-      supportsCustomFields: true,
-      supportsMedia: true
-    },
-    isActive: true
-  },
-  {
-    name: 'medium',
-    displayName: 'Medium',
-    description: 'Medium是一个在线发布平台，专注于高质量的内容创作和分享',
-    icon: 'https://miro.medium.com/v2/1*m-R_BkNf1Qjr1YbyOIJY2w.png',
-    apiEndpoint: 'https://api.medium.com',
-    authType: 'token',
-    supportedFeatures: ['publish', 'draft', 'tags'],
-    config: {
-      maxTitleLength: 100,
-      maxContentLength: 100000,
-      supportedFormats: ['markdown', 'html'],
-      requiresCategory: false,
-      maxTags: 5,
-      supportsSubtitle: true
-    },
-    isActive: false // 默认禁用，需要用户手动启用
-  }
+  // {
+  //   name: 'github',
+  //   displayName: 'GitHub Pages',
+  //   description: 'GitHub Pages是GitHub提供的静态网站托管服务',
+  //   icon: 'https://github.githubassets.com/favicons/favicon-32x32.png',
+  //   apiEndpoint: 'https://api.github.com',
+  //   authType: 'token',
+  //   supportedFeatures: ['publish', 'draft', 'schedule', 'tags', 'categories', 'images'],
+  //   config: {
+  //     maxTitleLength: 200,
+  //     maxContentLength: 1000000,
+  //     supportedFormats: ['markdown'],
+  //     requiresCategory: false,
+  //     maxTags: 50,
+  //     supportsFrontMatter: true,
+  //     supportsAssets: true,
+  //     requiresRepo: true
+  //   },
+  //   isActive: true
+  // },
+  // {
+  //   name: 'wordpress',
+  //   displayName: 'WordPress',
+  //   description: 'WordPress是全球最受欢迎的内容管理系统和博客平台',
+  //   icon: 'https://s.w.org/favicon.ico',
+  //   apiEndpoint: '',
+  //   authType: 'username_password',
+  //   supportedFeatures: ['publish', 'draft', 'schedule', 'tags', 'categories', 'images'],
+  //   config: {
+  //     maxTitleLength: 200,
+  //     maxContentLength: 2000000,
+  //     supportedFormats: ['html', 'markdown'],
+  //     requiresCategory: false,
+  //     maxTags: 100,
+  //     supportsCustomFields: true,
+  //     supportsMedia: true
+  //   },
+  //   isActive: true
+  // },
+  // {
+  //   name: 'medium',
+  //   displayName: 'Medium',
+  //   description: 'Medium是一个在线发布平台，专注于高质量的内容创作和分享',
+  //   icon: 'https://miro.medium.com/v2/1*m-R_BkNf1Qjr1YbyOIJY2w.png',
+  //   apiEndpoint: 'https://api.medium.com',
+  //   authType: 'token',
+  //   supportedFeatures: ['publish', 'draft', 'tags'],
+  //   config: {
+  //     maxTitleLength: 100,
+  //     maxContentLength: 100000,
+  //     supportedFormats: ['markdown', 'html'],
+  //     requiresCategory: false,
+  //     maxTags: 5,
+  //     supportsSubtitle: true
+  //   },
+  //   isActive: false // 默认禁用，需要用户手动启用
+  // }
 ];
 
 /**

@@ -2,12 +2,9 @@
  * 发布器模块统一导出
  */
 
-import { BasePlatformPublisher } from './base';
-import { PlatformType } from '../../types';
-
 // 基础发布器
 export { BasePlatformPublisher } from './base';
-export type { LoginCredentials, PublishResult, ArticleData } from './base';
+export type { LoginCredentials, PublishResult } from './base';
 
 // 各平台发布器
 export { CSDNPublisher } from './csdn';
@@ -24,30 +21,20 @@ export type { WechatCredentials } from './wechat';
 
 // 发布器工厂函数
 export function createPublisher(platform: string): BasePlatformPublisher | null {
-  return createPlatformPublisher(platform);
-}
-
-export function createPlatformPublisher(platform: string): BasePlatformPublisher | null {
-  // 动态导入发布器类
-  const { CSDNPublisher } = require('./csdn');
-  const { JuejinPublisher } = require('./juejin');
-  const { HuaweiPublisher } = require('./huawei');
-  const { WechatPublisher } = require('./wechat');
-
   switch (platform.toLowerCase()) {
     case 'csdn':
-      return new CSDNPublisher('csdn', 'https://blog.csdn.net');
+      return new CSDNPublisher('CSDN', 'https://blog.csdn.net');
     case 'juejin':
     case '掘金':
-      return new JuejinPublisher('juejin', 'https://juejin.cn');
+      return new JuejinPublisher('掘金', 'https://juejin.cn');
     case 'huawei':
     case '华为':
     case '华为开发者社区':
-      return new HuaweiPublisher('huawei', 'https://developer.huawei.com');
+      return new HuaweiPublisher('华为开发者社区', 'https://developer.huawei.com');
     case 'wechat':
     case '微信':
     case '微信公众号':
-      return new WechatPublisher('wechat', 'https://mp.weixin.qq.com');
+      return new WechatPublisher('微信公众号', 'https://mp.weixin.qq.com');
     default:
       console.warn(`不支持的发布平台: ${platform}`);
       return null;
@@ -100,8 +87,14 @@ export const platformConfigs: Record<string, PlatformConfig> = {
   },
 };
 
+// 平台发布器工厂函数（别名）
+export function createPlatformPublisher(platform: string): BasePlatformPublisher | null {
+  return createPublisher(platform);
+}
+
 export default {
   createPublisher,
+  createPlatformPublisher,
   getSupportedPlatforms,
   platformConfigs,
 };

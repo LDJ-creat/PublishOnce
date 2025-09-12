@@ -1,5 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
-import { IArticle, PlatformInfo } from '../types';
+import { IArticle, PlatformInfo } from '@/types';
 
 // 平台信息子文档
 const platformInfoSchema = new Schema<PlatformInfo>({

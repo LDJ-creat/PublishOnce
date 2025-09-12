@@ -1,5 +1,5 @@
 import { Page } from 'playwright';
-import { BasePlatformPublisher, LoginCredentials, PublishResult, ArticleData } from './base';
+import { BasePlatformPublisher, LoginCredentials, PublishResult, ArticlePublishData } from './base';
 
 /**
  * 掘金登录凭据
@@ -13,8 +13,6 @@ export interface JuejinCredentials extends LoginCredentials {
  * 掘金发布器
  */
 export class JuejinPublisher extends BasePlatformPublisher {
-  protected platformName = '掘金';
-  protected baseUrl = 'https://juejin.cn';
 
   /**
    * 登录掘金（主要通过扫码）
@@ -23,11 +21,9 @@ export class JuejinPublisher extends BasePlatformPublisher {
     try {
       console.log('开始登录掘金...');
       
-      if (!this.page) {
-        throw new Error('浏览器页面未初始化');
+      if (!await this.safeGoto('https://juejin.cn/login')) {
+        return false;
       }
-      
-      await this.page.goto('https://juejin.cn/login');
       await this.waitForLoad();
 
       // 掘金主要使用扫码登录，也支持手机号登录
@@ -60,11 +56,11 @@ export class JuejinPublisher extends BasePlatformPublisher {
         await this.saveScreenshot('juejin-qrcode.png');
         
         // 等待扫码完成
-        await this.page.waitForURL('**/juejin.cn/**', { timeout: 120000 });
+        await this.page!.waitForURL('**/juejin.cn/**', { timeout: 120000 });
       }
 
       // 验证登录成功
-      await this.page.waitForSelector('.avatar', { timeout: 10000 });
+      await this.page!.waitForSelector('.avatar', { timeout: 10000 });
       
       console.log('掘金登录成功');
       return true;
@@ -79,20 +75,20 @@ export class JuejinPublisher extends BasePlatformPublisher {
   /**
    * 发布文章到掘金
    */
-  async publishArticle(article: ArticleData): Promise<PublishResult> {
+  async publish(article: ArticlePublishData): Promise<PublishResult> {
     try {
       console.log(`开始发布文章到掘金: ${article.title}`);
-    
-    if (!this.page) {
-      throw new Error('浏览器页面未初始化');
-    }
-    
-    // 进入写文章页面
-    await this.page.goto('https://juejin.cn/editor/drafts/new?v=2');
+      
+      // 进入创作者中心
+      if (!await this.safeGoto('https://juejin.cn/editor/drafts/new?v=2')) {
+        return { success: false, error: '无法访问编辑页面' };
+      }
       await this.waitForLoad();
 
       // 等待编辑器加载
-      await this.page.waitForSelector('.editor-title', { timeout: 15000 });
+      if (this.page) {
+        await this.page.waitForSelector('.editor-title', { timeout: 15000 });
+      }
       await this.wait(3000);
 
       // 填写标题
@@ -106,13 +102,15 @@ export class JuejinPublisher extends BasePlatformPublisher {
         await this.wait(1000);
         
         // 清空编辑器
-        await this.page.keyboard.press('Control+A');
-        await this.page.keyboard.press('Delete');
-        await this.wait(500);
-        
-        // 输入内容
-        await this.page.keyboard.type(article.content);
-        await this.wait(2000);
+        if (this.page) {
+          await this.page?.keyboard.press('Control+A');
+        await this.page?.keyboard.press('Delete');
+          await this.wait(500);
+          
+          // 输入内容
+          await this.page?.keyboard.type(article.content);
+          await this.wait(2000);
+        }
       }
 
       // 保存草稿
@@ -124,7 +122,9 @@ export class JuejinPublisher extends BasePlatformPublisher {
       await this.wait(2000);
 
       // 等待发布设置弹窗
-      await this.page.waitForSelector('.publish-popup', { timeout: 10000 });
+      if (this.page) {
+        await this.page.waitForSelector('.publish-popup', { timeout: 10000 });
+      }
 
       // 设置文章封面（如果有）
       if (article.coverImage) {
@@ -156,7 +156,7 @@ export class JuejinPublisher extends BasePlatformPublisher {
           await this.wait(1000);
           
           // 查找匹配的分类
-          const categoryOptions = await this.page.locator('.option-item').all();
+          const categoryOptions = await this.page!.locator('.option-item').all();
           for (const option of categoryOptions) {
             const text = await option.textContent();
             if (text && text.includes(article.category)) {
@@ -175,7 +175,7 @@ export class JuejinPublisher extends BasePlatformPublisher {
         try {
           for (const tag of article.tags.slice(0, 5)) { // 掘金最多5个标签
             await this.safeType('.tag-input input', tag);
-            await this.page.keyboard.press('Enter');
+            await this.page?.keyboard.press('Enter');
             await this.wait(500);
           }
         } catch (error) {
@@ -210,7 +210,7 @@ export class JuejinPublisher extends BasePlatformPublisher {
       // 检查发布结果
       try {
         // 等待发布成功页面或跳转
-        await this.page.waitForFunction(
+        await this.page!.waitForFunction(
           () => {
             return document.querySelector('.success-tip') || 
                    window.location.href.includes('/post/');
@@ -220,12 +220,12 @@ export class JuejinPublisher extends BasePlatformPublisher {
         
         // 获取文章链接
         let articleUrl = '';
-        if (this.page.url().includes('/post/')) {
-          articleUrl = this.page.url();
+        if (this.page?.url().includes('/post/')) {
+        articleUrl = this.page?.url() || '';
         } else {
           // 尝试从页面中获取链接
           try {
-            const linkElement = await this.page.locator('.article-link').first();
+            const linkElement = await this.page!.locator('.article-link').first();
             if (await linkElement.isVisible()) {
               articleUrl = await linkElement.getAttribute('href') || '';
               if (articleUrl && !articleUrl.startsWith('http')) {
@@ -248,7 +248,7 @@ export class JuejinPublisher extends BasePlatformPublisher {
         
       } catch (error) {
         // 检查是否有错误提示
-        const errorMsg = await this.page.locator('.error-message').textContent();
+        const errorMsg = await this.page!.locator('.error-message').textContent();
         throw new Error(errorMsg || '发布超时或失败');
       }
       
@@ -269,17 +269,11 @@ export class JuejinPublisher extends BasePlatformPublisher {
    */
   async checkLoginStatus(): Promise<boolean> {
     try {
-      if (!this.page) {
-        throw new Error('页面未初始化');
-      }
-      await this.page.goto('https://juejin.cn');
+      await this.page!.goto('https://juejin.cn');
       await this.wait(3000);
       
       // 检查是否有用户头像
-      if (!this.page) {
-        throw new Error('页面未初始化');
-      }
-      const avatar = await this.page.locator('.avatar').isVisible();
+      const avatar = await this.page!.locator('.avatar').isVisible();
       return avatar;
     } catch (error) {
       console.error('检查掘金登录状态失败:', error);
@@ -292,16 +286,12 @@ export class JuejinPublisher extends BasePlatformPublisher {
    */
   async getPublishedArticles(limit: number = 10): Promise<any[]> {
     try {
-      if (!this.page) {
-        throw new Error('浏览器页面未初始化');
-      }
-      
       // 进入个人主页
-      await this.page.goto('https://juejin.cn/user/center/posts');
+      await this.page!.goto('https://juejin.cn/user/center/posts');
       await this.waitForLoad();
 
       const articles = [];
-      const articleElements = await this.page.locator('.article-item').all();
+      const articleElements = await this.page!.locator('.article-item').all();
       
       for (let i = 0; i < Math.min(articleElements.length, limit); i++) {
         const element = articleElements[i];
@@ -331,15 +321,39 @@ export class JuejinPublisher extends BasePlatformPublisher {
   }
 
   /**
+   * 更新文章
+   */
+  async updateArticle(articleId: string, article: ArticlePublishData): Promise<boolean> {
+    try {
+      console.log(`更新掘金文章: ${articleId}`);
+      // TODO: 实现文章更新逻辑
+      return false;
+    } catch (error) {
+      console.error('更新掘金文章失败:', error);
+      return false;
+    }
+  }
+
+  /**
+   * 删除文章
+   */
+  async deleteArticle(articleId: string): Promise<boolean> {
+    try {
+      console.log(`删除掘金文章: ${articleId}`);
+      // TODO: 实现文章删除逻辑
+      return false;
+    } catch (error) {
+      console.error('删除掘金文章失败:', error);
+      return false;
+    }
+  }
+
+  /**
    * 获取文章统计数据
    */
   async getArticleStats(articleUrl: string): Promise<any> {
     try {
-      if (!this.page) {
-        throw new Error('浏览器页面未初始化');
-      }
-      
-      await this.page.goto(articleUrl);
+      await this.page!.goto(articleUrl);
       await this.waitForLoad();
 
       const stats = {
@@ -351,7 +365,7 @@ export class JuejinPublisher extends BasePlatformPublisher {
 
       // 获取阅读数
       try {
-        const viewsText = await this.page.locator('.view-count').textContent();
+        const viewsText = await this.page!.locator('.view-count').textContent();
         stats.views = this.parseNumber(viewsText || '0');
       } catch (error) {
         console.warn('获取阅读数失败:', error);
@@ -359,7 +373,7 @@ export class JuejinPublisher extends BasePlatformPublisher {
 
       // 获取点赞数
       try {
-        const likesText = await this.page.locator('.like-count').textContent();
+        const likesText = await this.page!.locator('.like-count').textContent();
         stats.likes = this.parseNumber(likesText || '0');
       } catch (error) {
         console.warn('获取点赞数失败:', error);
@@ -367,7 +381,7 @@ export class JuejinPublisher extends BasePlatformPublisher {
 
       // 获取评论数
       try {
-        const commentsText = await this.page.locator('.comment-count').textContent();
+        const commentsText = await this.page!.locator('.comment-count').textContent();
         stats.comments = this.parseNumber(commentsText || '0');
       } catch (error) {
         console.warn('获取评论数失败:', error);
@@ -375,7 +389,7 @@ export class JuejinPublisher extends BasePlatformPublisher {
 
       // 获取收藏数
       try {
-        const collectsText = await this.page.locator('.collect-count').textContent();
+        const collectsText = await this.page!.locator('.collect-count').textContent();
         stats.collects = this.parseNumber(collectsText || '0');
       } catch (error) {
         console.warn('获取收藏数失败:', error);
@@ -386,24 +400,6 @@ export class JuejinPublisher extends BasePlatformPublisher {
       console.error('获取掘金文章统计失败:', error);
       return null;
     }
-  }
-
-  /**
-   * 更新文章
-   */
-  async updateArticle(articleId: string, article: ArticleData): Promise<boolean> {
-    // 掘金暂不支持文章更新功能
-    console.warn('掘金平台暂不支持文章更新功能');
-    return false;
-  }
-
-  /**
-   * 删除文章
-   */
-  async deleteArticle(articleId: string): Promise<boolean> {
-    // 掘金暂不支持文章删除功能
-    console.warn('掘金平台暂不支持文章删除功能');
-    return false;
   }
 
   /**

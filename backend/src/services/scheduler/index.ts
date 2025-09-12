@@ -1,6 +1,6 @@
 import cron from 'node-cron';
 import scrapeProcessor from '../queue/scrapeProcessor';
-import { PlatformCredential } from '../../models/PlatformCredential';
+import { PlatformCredential } from '@/models/PlatformCredential';
 
 /**
  * 定时任务调度器

@@ -1,5 +1,5 @@
 import { Page } from 'playwright';
-import { BasePlatformPublisher, LoginCredentials, PublishResult, ArticleData } from './base';
+import { BasePlatformPublisher, LoginCredentials, PublishResult, ArticlePublishData } from './base';
 
 /**
  * 微信公众号登录凭据
@@ -13,8 +13,6 @@ export interface WechatCredentials extends LoginCredentials {
  * 微信公众号发布器
  */
 export class WechatPublisher extends BasePlatformPublisher {
-  protected platformName = '微信公众号';
-  protected baseUrl = 'https://mp.weixin.qq.com';
 
   /**
    * 登录微信公众号
@@ -22,13 +20,11 @@ export class WechatPublisher extends BasePlatformPublisher {
   async login(credentials: WechatCredentials): Promise<boolean> {
     try {
       console.log('开始登录微信公众号...');
-    
-    if (!this.page) {
-      throw new Error('浏览器页面未初始化');
-    }
-    
-    await this.page.goto(`${this.baseUrl}/cgi-bin/loginpage`);
-    await this.waitForLoad();
+      
+      if (!await this.safeGoto(`${this.baseUrl}/cgi-bin/loginpage`)) {
+        return false;
+      }
+      await this.waitForLoad();
 
       // 输入用户名
       await this.safeType('input[name="account"]', credentials.username);
@@ -58,20 +54,20 @@ export class WechatPublisher extends BasePlatformPublisher {
 
       // 检查是否需要扫码
       try {
-        const qrcode = await this.page.waitForSelector('.qrcode', { timeout: 5000 });
+        const qrcode = await this.page?.waitForSelector('.qrcode', { timeout: 5000 });
         if (qrcode) {
           console.log('检测到二维码，需要扫码登录');
           await this.saveScreenshot('wechat-qrcode.png');
           
           // 等待扫码完成
-          await this.page.waitForNavigation({ timeout: 120000 });
+          await this.page?.waitForNavigation({ timeout: 120000 });
         }
       } catch (error) {
         // 没有二维码，继续
       }
 
       // 等待登录成功，检查是否跳转到主页
-      await this.page.waitForURL('**/home**', { timeout: 30000 });
+      await this.page?.waitForURL('**/home**', { timeout: 30000 });
       
       console.log('微信公众号登录成功');
       return true;
@@ -86,16 +82,14 @@ export class WechatPublisher extends BasePlatformPublisher {
   /**
    * 发布文章到微信公众号
    */
-  async publishArticle(article: ArticleData): Promise<PublishResult> {
+  async publish(article: ArticlePublishData): Promise<PublishResult> {
     try {
       console.log(`开始发布文章到微信公众号: ${article.title}`);
       
-      if (!this.page) {
-        throw new Error('浏览器页面未初始化');
-      }
-      
       // 进入素材管理页面
-      await this.page.goto(`${this.baseUrl}/cgi-bin/appmsg?t=media/appmsg_edit_v2&action=edit&isNew=1&type=10&createType=0&token=${await this.getToken()}&lang=zh_CN`);
+      if (!await this.safeGoto(`${this.baseUrl}/cgi-bin/appmsg?t=media/appmsg_edit_v2&action=edit&isNew=1&type=10&createType=0&token=${await this.getToken()}&lang=zh_CN`)) {
+        return { success: false, platform: '微信公众号', error: '无法访问编辑页面' };
+      }
       await this.waitForLoad();
 
       // 填写标题
@@ -109,19 +103,21 @@ export class WechatPublisher extends BasePlatformPublisher {
       }
 
       // 处理内容编辑器
-      const editorFrame = await this.page.frameLocator('#ueditor_0');
+      const editorFrame = await this.page?.frameLocator('#ueditor_0');
       
       // 清空编辑器内容
-      await editorFrame.locator('body').click();
-      await this.page.keyboard.press('Control+A');
-      await this.page.keyboard.press('Delete');
+      await editorFrame?.locator('body').click();
+      if (this.page) {
+        await this.page?.keyboard.press('Control+A');
+        await this.page?.keyboard.press('Delete');
+      }
       await this.wait(1000);
 
       // 输入文章内容
       if (article.content) {
         // 如果是Markdown格式，需要转换为富文本
         const htmlContent = this.convertMarkdownToHtml(article.content);
-        await editorFrame.locator('body').fill(htmlContent);
+        await editorFrame?.locator('body').fill(htmlContent);
       }
       
       await this.wait(2000);
@@ -156,7 +152,7 @@ export class WechatPublisher extends BasePlatformPublisher {
           // 微信公众号的标签设置
           for (const tag of article.tags.slice(0, 3)) { // 最多3个标签
             await this.safeType('input.tag_input', tag);
-            await this.page.keyboard.press('Enter');
+            await this.page?.keyboard.press('Enter');
             await this.wait(500);
           }
         } catch (error) {
@@ -173,7 +169,7 @@ export class WechatPublisher extends BasePlatformPublisher {
       await this.wait(2000);
 
       // 检查预览是否成功
-      const previewSuccess = await this.page.locator('.preview_success').isVisible();
+      const previewSuccess = await this.page?.locator('.preview_success').isVisible();
       if (!previewSuccess) {
         throw new Error('文章预览失败');
       }
@@ -188,7 +184,7 @@ export class WechatPublisher extends BasePlatformPublisher {
         await this.wait(5000);
         
         // 检查发布结果
-        const publishSuccess = await this.page.locator('.publish_success').isVisible();
+        const publishSuccess = await this.page?.locator('.publish_success').isVisible();
         if (publishSuccess) {
           console.log('文章发布成功');
         } else {
@@ -199,8 +195,8 @@ export class WechatPublisher extends BasePlatformPublisher {
       // 获取文章链接（发布后才有）
       let articleUrl = '';
       try {
-        const urlElement = await this.page.locator('.article_url').first();
-        if (await urlElement.isVisible()) {
+        const urlElement = await this.page?.locator('.article_url').first();
+        if (urlElement && await urlElement.isVisible()) {
           articleUrl = await urlElement.textContent() || '';
         }
       } catch (error) {
@@ -211,7 +207,7 @@ export class WechatPublisher extends BasePlatformPublisher {
       
       return {
         success: true,
-        platform: '微信公众号',
+        // platform: '微信公众号', // 移除不存在的属性
         url: articleUrl,
         message: article.publishImmediately ? '文章发布成功' : '文章已保存为草稿',
       };
@@ -233,11 +229,7 @@ export class WechatPublisher extends BasePlatformPublisher {
    */
   private async getToken(): Promise<string> {
     try {
-      if (!this.page) {
-        throw new Error('浏览器页面未初始化');
-      }
-      
-      const url = this.page.url();
+      const url = this.page?.url() || '';
       const tokenMatch = url.match(/token=([^&]+)/);
       return tokenMatch ? tokenMatch[1] : '';
     } catch (error) {
@@ -262,40 +254,62 @@ export class WechatPublisher extends BasePlatformPublisher {
   }
 
   /**
+   * 检查登录状态
+   */
+  async checkLoginStatus(): Promise<boolean> {
+    try {
+      if (!await this.safeGoto(`${this.baseUrl}/cgi-bin/home`)) {
+        return false;
+      }
+      await this.wait(3000);
+      
+      // 检查是否在登录页面
+      const isLoginPage = this.page ? await this.page?.locator('.login_form').isVisible() : false;
+      return !isLoginPage;
+    } catch (error) {
+      console.error('检查微信公众号登录状态失败:', error);
+      return false;
+    }
+  }
+
+  /**
+   * 获取文章列表
+   */
+  async getArticles(): Promise<any[]> {
+    try {
+      console.log('获取微信公众号文章列表...');
+      // TODO: 实现获取文章列表逻辑
+      return [];
+    } catch (error) {
+      console.error('获取微信公众号文章列表失败:', error);
+      return [];
+    }
+  }
+
+  /**
    * 更新文章
    */
-  async updateArticle(articleId: string, article: ArticleData): Promise<boolean> {
-    // 微信公众号暂不支持文章更新功能
-    console.warn('微信公众号暂不支持文章更新功能');
-    return false;
+  async updateArticle(articleId: string, article: ArticlePublishData): Promise<boolean> {
+    try {
+      console.log(`更新微信公众号文章: ${articleId}`);
+      // TODO: 实现文章更新逻辑
+      return false;
+    } catch (error) {
+      console.error('更新微信公众号文章失败:', error);
+      return false;
+    }
   }
 
   /**
    * 删除文章
    */
   async deleteArticle(articleId: string): Promise<boolean> {
-    // 微信公众号暂不支持文章删除功能
-    console.warn('微信公众号暂不支持文章删除功能');
-    return false;
-  }
-
-  /**
-   * 检查登录状态
-   */
-  async checkLoginStatus(): Promise<boolean> {
     try {
-      if (!this.page) {
-        throw new Error('浏览器页面未初始化');
-      }
-      
-      await this.page.goto(`${this.baseUrl}/cgi-bin/home`);
-      await this.wait(3000);
-      
-      // 检查是否在登录页面
-      const isLoginPage = await this.page.locator('.login_form').isVisible();
-      return !isLoginPage;
+      console.log(`删除微信公众号文章: ${articleId}`);
+      // TODO: 实现文章删除逻辑
+      return false;
     } catch (error) {
-      console.error('检查微信公众号登录状态失败:', error);
+      console.error('删除微信公众号文章失败:', error);
       return false;
     }
   }

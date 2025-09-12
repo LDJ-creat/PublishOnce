@@ -1,5 +1,5 @@
 import { Page } from 'playwright';
-import { BasePlatformPublisher, LoginCredentials, PublishResult, ArticleData } from './base';
+import { BasePlatformPublisher, LoginCredentials, PublishResult, ArticlePublishData } from './base';
 
 /**
  * 华为开发者社区登录凭据
@@ -13,8 +13,6 @@ export interface HuaweiCredentials extends LoginCredentials {
  * 华为开发者社区发布器
  */
 export class HuaweiPublisher extends BasePlatformPublisher {
-  protected platformName = '华为开发者社区';
-  protected baseUrl = 'https://developer.huawei.com';
 
   /**
    * 登录华为开发者社区
@@ -23,11 +21,9 @@ export class HuaweiPublisher extends BasePlatformPublisher {
     try {
       console.log('开始登录华为开发者社区...');
       
-      if (!this.page) {
-        throw new Error('浏览器页面未初始化');
+      if (!await this.safeGoto('https://id1.cloud.huawei.com/CAS/portal/login.html')) {
+        return false;
       }
-      
-      await this.page.goto('https://id1.cloud.huawei.com/CAS/portal/login.html');
       await this.waitForLoad();
 
       // 输入用户名
@@ -70,14 +66,14 @@ export class HuaweiPublisher extends BasePlatformPublisher {
           await this.saveScreenshot('huawei-sms-verify.png');
           
           // 等待短信验证完成
-          await this.page.waitForNavigation({ timeout: 120000 });
+          await this.page!.waitForNavigation({ timeout: 120000 });
         }
       } catch (error) {
         // 没有短信验证，继续
       }
 
       // 验证登录成功
-      await this.page.waitForURL('**/developer.huawei.com/**', { timeout: 30000 });
+      await this.page!.waitForURL('**/developer.huawei.com/**', { timeout: 30000 });
       
       console.log('华为开发者社区登录成功');
       return true;
@@ -92,16 +88,14 @@ export class HuaweiPublisher extends BasePlatformPublisher {
   /**
    * 发布文章到华为开发者社区
    */
-  async publishArticle(article: ArticleData): Promise<PublishResult> {
+  async publish(article: ArticlePublishData): Promise<PublishResult> {
     try {
       console.log(`开始发布文章到华为开发者社区: ${article.title}`);
       
-      if (!this.page) {
-        throw new Error('浏览器页面未初始化');
-      }
-      
       // 进入创作中心
-      await this.page.goto('https://developer.huawei.com/consumer/cn/forum/home');
+      if (!await this.safeGoto('https://developer.huawei.com/consumer/cn/forum/home')) {
+        return { success: false, error: '无法访问发布页面' };
+      }
       await this.waitForLoad();
 
       // 点击发帖按钮
@@ -109,7 +103,9 @@ export class HuaweiPublisher extends BasePlatformPublisher {
       await this.wait(2000);
 
       // 等待编辑器加载
-      await this.page.waitForSelector('.editor-container', { timeout: 15000 });
+      if (this.page) {
+        await this.page.waitForSelector('.editor-container', { timeout: 15000 });
+      }
       await this.wait(3000);
 
       // 选择板块（如果需要）
@@ -118,7 +114,7 @@ export class HuaweiPublisher extends BasePlatformPublisher {
         await this.wait(1000);
         
         // 选择合适的板块，默认选择第一个
-        const boardOptions = await this.page.locator('.board-option').all();
+        const boardOptions = await this.page!.locator('.board-option').all();
         if (boardOptions.length > 0) {
           await boardOptions[0].click();
           await this.wait(500);
@@ -136,7 +132,7 @@ export class HuaweiPublisher extends BasePlatformPublisher {
         try {
           for (const tag of article.tags.slice(0, 3)) { // 华为社区最多3个标签
             await this.safeType('.tag-input input', tag);
-            await this.page.keyboard.press('Enter');
+            await this.page?.keyboard.press('Enter');
             await this.wait(500);
           }
         } catch (error) {
@@ -156,21 +152,25 @@ export class HuaweiPublisher extends BasePlatformPublisher {
           await this.safeClick('.markdown-editor');
           await this.wait(500);
           
-          await this.page.keyboard.press('Control+A');
-          await this.page.keyboard.press('Delete');
-          await this.wait(500);
-          
-          await this.page.keyboard.type(article.content);
+          if (this.page) {
+            await this.page?.keyboard.press('Control+A');
+        await this.page?.keyboard.press('Delete');
+            await this.wait(500);
+            
+            await this.page?.keyboard.type(article.content);
+          }
           await this.wait(2000);
         } catch (error) {
           // 如果没有Markdown模式，使用富文本编辑器
           console.log('使用富文本编辑器');
           
-          const editorFrame = await this.page.frameLocator('.editor-frame');
+          const editorFrame = await this.page!.frameLocator('.editor-frame');
           await editorFrame.locator('body').click();
-          await this.page.keyboard.press('Control+A');
-          await this.page.keyboard.press('Delete');
-          await this.wait(500);
+          if (this.page) {
+            await this.page?.keyboard.press('Control+A');
+          await this.page?.keyboard.press('Delete');
+            await this.wait(500);
+          }
           
           // 简单转换Markdown为HTML
           const htmlContent = this.convertMarkdownToHtml(article.content);
@@ -229,7 +229,7 @@ export class HuaweiPublisher extends BasePlatformPublisher {
       // 检查发布结果
       try {
         // 等待发布成功提示或跳转
-        await this.page.waitForFunction(
+        await this.page!.waitForFunction(
           () => {
             return document.querySelector('.success-message') || 
                    window.location.href.includes('/topic/');
@@ -239,8 +239,8 @@ export class HuaweiPublisher extends BasePlatformPublisher {
         
         // 获取文章链接
         let articleUrl = '';
-        if (this.page.url().includes('/topic/')) {
-          articleUrl = this.page.url();
+        if (this.page?.url().includes('/topic/')) {
+        articleUrl = this.page?.url() || '';
         } else {
           // 尝试从成功提示中获取链接
           try {
@@ -288,10 +288,6 @@ export class HuaweiPublisher extends BasePlatformPublisher {
    */
   async checkLoginStatus(): Promise<boolean> {
     try {
-      if (!this.page) {
-        throw new Error('浏览器页面未初始化');
-      }
-      
       await this.page.goto('https://developer.huawei.com/consumer/cn/forum/home');
       await this.wait(3000);
       
@@ -309,16 +305,12 @@ export class HuaweiPublisher extends BasePlatformPublisher {
    */
   async getPublishedArticles(limit: number = 10): Promise<any[]> {
     try {
-      if (!this.page) {
-        throw new Error('浏览器页面未初始化');
-      }
-      
       // 进入个人中心
       await this.page.goto('https://developer.huawei.com/consumer/cn/forum/user/posts');
       await this.waitForLoad();
 
       const articles = [];
-      const articleElements = await this.page.locator('.post-item').all();
+      const articleElements = await this.page!.locator('.post-item').all();
       
       for (let i = 0; i < Math.min(articleElements.length, limit); i++) {
         const element = articleElements[i];
@@ -348,6 +340,34 @@ export class HuaweiPublisher extends BasePlatformPublisher {
   }
 
   /**
+   * 更新文章
+   */
+  async updateArticle(articleId: string, article: ArticlePublishData): Promise<boolean> {
+    try {
+      console.log(`更新华为开发者社区文章: ${articleId}`);
+      // TODO: 实现文章更新逻辑
+      return false;
+    } catch (error) {
+      console.error('更新华为开发者社区文章失败:', error);
+      return false;
+    }
+  }
+
+  /**
+   * 删除文章
+   */
+  async deleteArticle(articleId: string): Promise<boolean> {
+    try {
+      console.log(`删除华为开发者社区文章: ${articleId}`);
+      // TODO: 实现文章删除逻辑
+      return false;
+    } catch (error) {
+      console.error('删除华为开发者社区文章失败:', error);
+      return false;
+    }
+  }
+
+  /**
    * 简单的Markdown到HTML转换
    */
   private convertMarkdownToHtml(markdown: string): string {
@@ -367,11 +387,7 @@ export class HuaweiPublisher extends BasePlatformPublisher {
    */
   async getArticleStats(articleUrl: string): Promise<any> {
     try {
-      if (!this.page) {
-        throw new Error('浏览器页面未初始化');
-      }
-      
-      await this.page.goto(articleUrl);
+      await this.page!.goto(articleUrl);
       await this.waitForLoad();
 
       const stats = {
@@ -383,7 +399,7 @@ export class HuaweiPublisher extends BasePlatformPublisher {
 
       // 获取浏览数
       try {
-        const viewsText = await this.page.locator('.view-count').textContent();
+        const viewsText = await this.page!.locator('.view-count').textContent();
         stats.views = this.parseNumber(viewsText || '0');
       } catch (error) {
         console.warn('获取浏览数失败:', error);
@@ -391,7 +407,7 @@ export class HuaweiPublisher extends BasePlatformPublisher {
 
       // 获取点赞数
       try {
-        const likesText = await this.page.locator('.like-count').textContent();
+        const likesText = await this.page!.locator('.like-count').textContent();
         stats.likes = this.parseNumber(likesText || '0');
       } catch (error) {
         console.warn('获取点赞数失败:', error);
@@ -399,7 +415,7 @@ export class HuaweiPublisher extends BasePlatformPublisher {
 
       // 获取评论数
       try {
-        const commentsText = await this.page.locator('.comment-count').textContent();
+        const commentsText = await this.page!.locator('.comment-count').textContent();
         stats.comments = this.parseNumber(commentsText || '0');
       } catch (error) {
         console.warn('获取评论数失败:', error);
@@ -410,24 +426,6 @@ export class HuaweiPublisher extends BasePlatformPublisher {
       console.error('获取华为开发者社区文章统计失败:', error);
       return null;
     }
-  }
-
-  /**
-   * 更新文章
-   */
-  async updateArticle(articleId: string, article: ArticleData): Promise<boolean> {
-    // 华为开发者社区暂不支持文章更新功能
-    console.warn('华为开发者社区暂不支持文章更新功能');
-    return false;
-  }
-
-  /**
-   * 删除文章
-   */
-  async deleteArticle(articleId: string): Promise<boolean> {
-    // 华为开发者社区暂不支持文章删除功能
-    console.warn('华为开发者社区暂不支持文章删除功能');
-    return false;
   }
 
   /**

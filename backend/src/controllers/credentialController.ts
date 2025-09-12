@@ -174,7 +174,7 @@ export const testCredential = async (req: Request, res: Response): Promise<Respo
     }
 
     // 验证凭据格式
-    const isValid = (credential as any).validateCredentials ? (credential as any).validateCredentials() : true;
+    const isValid = credential.validateCredentials();
     if (!isValid) {
       return res.status(400).json({
         success: false,
@@ -195,13 +195,11 @@ export const testCredential = async (req: Request, res: Response): Promise<Respo
       }
 
       // 测试登录
-      const loginResult = await publisher.login(credential.credentials as any);
+      const loginResult = await publisher.login(credential.credentials);
       
       if (loginResult) {
         // 更新最后使用时间
-        await PlatformCredential.findByIdAndUpdate(credential._id, {
-          lastUsedAt: new Date()
-        });
+        await PlatformCredential.updateLastUsed(userId!.toString(), credential.platform);
         
         res.json({
           success: true,
